@@ -22,12 +22,15 @@ public class AppDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(100);
 
+            entity.HasIndex(u => u.Name)
+                .IsUnique();
+
             entity.Property(u => u.Email)
-                .IsRequired()
                 .HasMaxLength(255);
 
             entity.HasIndex(u => u.Email)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("\"Email\" IS NOT NULL");
 
             entity.Property(u => u.PasswordHash)
                 .IsRequired();

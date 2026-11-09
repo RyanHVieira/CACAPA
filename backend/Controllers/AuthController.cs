@@ -19,20 +19,19 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Register(RegisterDTO dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name) ||
-            string.IsNullOrWhiteSpace(dto.Email) ||
             string.IsNullOrWhiteSpace(dto.Password) ||
             dto.Password.Length < 8)
         {
             return BadRequest(new
             {
-                message = "Informe nome, email e senha com pelo menos 8 caracteres."
+                message = "Informe nome e senha com pelo menos 8 caracteres."
             });
         }
 
         var result = await _authService.Register(dto);
 
         if (result == null)
-            return Conflict(new { message = "Email já cadastrado." });
+            return Conflict(new { message = "Nome já cadastrado." });
 
         return Ok(result);
     }
@@ -40,19 +39,19 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginDTO dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Email) ||
+        if (string.IsNullOrWhiteSpace(dto.Name) ||
             string.IsNullOrWhiteSpace(dto.Password))
         {
             return BadRequest(new
             {
-                message = "Informe email e senha."
+                message = "Informe nome e senha."
             });
         }
 
         var result = await _authService.Login(dto);
 
         if (result == null)
-            return Unauthorized(new { message = "Email ou senha incorretos." });
+            return Unauthorized(new { message = "Nome ou senha incorretos." });
 
         return Ok(result);
     }

@@ -20,17 +20,29 @@ public class AuthService
 
     public async Task<AuthResponseDTO?> Register(RegisterDTO dto)
     {
-        var email = dto.Email.Trim().ToLowerInvariant();
+        var name = dto.Name.Trim();
 
         var existingUser = await _context.Users
-            .AnyAsync(u => u.Email == email);
+            .AnyAsync(u => u.Name == name);
 
         if (existingUser)
             return null;
 
+        string? email = null;
+        if (!string.IsNullOrWhiteSpace(dto.Email))
+        {
+            email = dto.Email.Trim().ToLowerInvariant();
+
+            existingUser = await _context.Users
+                .AnyAsync(u => u.Email == email);
+
+            if (existingUser)
+                return null;
+        }
+
         var user = new User
         {
-            Name = dto.Name.Trim(),
+            Name = name,
             Email = email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password)
         };
@@ -43,16 +55,16 @@ public class AuthService
         {
             Token = _tokenService.GenerateToken(user),
             Name = user.Name,
-            Email = user.Email
+            Email = user.Email ?? string.Empty
         };
     }
 
     public async Task<AuthResponseDTO?> Login(LoginDTO dto)
     {
-        var email = dto.Email.Trim().ToLowerInvariant();
+        var name = dto.Name.Trim();
 
         var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == email);
+            .FirstOrDefaultAsync(u => u.Name == name);
 
         if (user == null)
             return null;
@@ -69,7 +81,7 @@ public class AuthService
         {
             Token = _tokenService.GenerateToken(user),
             Name = user.Name,
-            Email = user.Email
+            Email = user.Email ?? string.Empty
         };
     }
 }
