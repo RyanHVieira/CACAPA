@@ -1,0 +1,48 @@
+# Backend
+backend/bin/
+backend/obj/
+backend/src/AuthApi/bin/
+backend/src/AuthApi/obj/
+backend/*.db
+backend/*.sqlite
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/*.local
+
+# Environment files
+.env
+.env.local
+.env.*.local
+backend/src/AuthApi/appsettings.Development.json
+backend/src/AuthApi/appsettings.Local.json
+frontend/.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Docker
+docker-compose.override.yml
+
+# Test results
+TestResults/
+coverage/
+
+# NuGet
+packages/
+*.nupkg
