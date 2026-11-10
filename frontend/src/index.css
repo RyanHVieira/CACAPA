@@ -1,11 +1,280 @@
 @import "tailwindcss";
 
+@theme {
+  --font-cacapa: "Oswald", "Arial Narrow", Impact, sans-serif;
+}
+
+:root {
+  --bg-dark: #0b0710;
+  --panel-bg: #1b2427;
+  --panel-purple: #3a2a4a;
+  --panel-border: #0b0710;
+  --fichas-blue: #2f86ff;
+  --mult-red: #e0392b;
+  --gold-accent: #f2b632;
+  --meta-red: #ff5a4a;
+  --tacadas-blue: #4aa3ff;
+  --text-muted: #9fb4a8;
+  --paper-cream: #f4ecd8;
+  --font-cacapa: "Oswald", "Arial Narrow", Impact, sans-serif;
+}
+
+/* Caçapa Authentic CRT Container and Screen Effects */
+#w {
+  position: relative;
+  width: min(100vw, calc((100vh - 8px) * 16 / 9));
+  aspect-ratio: 16 / 9;
+  border-radius: 3% / 5%;
+  overflow: hidden;
+  box-shadow: 0 0 0 3px #000, 0 0 70px #000 inset;
+  background: var(--bg-dark);
+}
+
+#w canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  filter: contrast(1.12) saturate(1.25);
+}
+
+#w::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.3) 0 1px, transparent 1px 3px);
+  animation: fl 0.14s infinite;
+}
+
+#w::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 25;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.7) 100%),
+              linear-gradient(90deg, rgba(255, 0, 60, 0.05), transparent 30%, transparent 70%, rgba(0, 200, 255, 0.06));
+}
+
+@keyframes fl {
+  50% { opacity: 0.82; }
+}
+
+#w.nocrt::before,
+#w.nocrt::after {
+  display: none;
+}
+
+#w.nocrt canvas {
+  filter: none;
+}
+
+/* Sticker Shadow & Panel Utilities */
+.cacapa-sticker {
+  border: 3px solid #0b0710;
+  border-radius: 12px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45);
+}
+
+.cacapa-sticker-lg {
+  border: 4px solid #0b0710;
+  border-radius: 14px;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.45);
+}
+
+.cacapa-btn {
+  border: 3px solid #0b0710;
+  border-radius: 10px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45);
+  font-family: var(--font-cacapa);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s;
+  cursor: pointer;
+}
+
+.cacapa-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.45);
+}
+
+.cacapa-btn:active {
+  transform: translateY(2px) scale(0.97);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.cacapa-stroke {
+  -webkit-text-stroke: 1.5px #0b0710;
+  paint-order: stroke fill;
+  font-family: var(--font-cacapa);
+}
+
+.cacapa-stroke-sm {
+  -webkit-text-stroke: 1px #0b0710;
+  paint-order: stroke fill;
+  font-family: var(--font-cacapa);
+}
+
+.cacapa-stroke-lg {
+  -webkit-text-stroke: 2.5px #0b0710;
+  paint-order: stroke fill;
+  font-family: var(--font-cacapa);
+}
+
+/* Neon Sign Styles */
+.neon-sign {
+  border: 2px solid #3ec1d3;
+  box-shadow: 0 0 14px rgba(62, 193, 211, 0.65), inset 0 0 6px rgba(62, 193, 211, 0.25);
+  background: #140c1c;
+}
+
+.neon-title {
+  color: #ff8fd0;
+  text-shadow: 0 0 10px #ff3fa4, 0 0 4px #ff3fa4;
+}
+
+.neon-subtitle {
+  color: #9ff1ff;
+  text-shadow: 0 0 8px #3ec1d3, 0 0 3px #3ec1d3;
+}
+
+/* Animations */
+@keyframes cacapa-bob {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes foul-pulse {
+  0%, 100% {
+    border-color: #ff4b3a;
+    box-shadow: 0 0 12px rgba(255, 75, 58, 0.8), 0 4px 0 rgba(0, 0, 0, 0.45);
+    background-color: #3b1418;
+  }
+  50% {
+    border-color: #8c2a2a;
+    box-shadow: 0 0 4px rgba(255, 75, 58, 0.3), 0 4px 0 rgba(0, 0, 0, 0.45);
+    background-color: #240d10;
+  }
+}
+
+.animate-cacapa-bob {
+  animation: cacapa-bob 2.8s ease-in-out infinite;
+}
+
+.animate-foul-pulse {
+  animation: foul-pulse 0.9s ease-in-out infinite;
+}
+
+/* Boss Hazard Stripes & Pulse */
+@keyframes hazard-move {
+  0% { background-position: 0 0; }
+  100% { background-position: 28px 0; }
+}
+
+.hazard-stripes {
+  background: repeating-linear-gradient(
+    -45deg,
+    #f2b632,
+    #f2b632 10px,
+    #0b0710 10px,
+    #0b0710 20px
+  );
+  background-size: 28px 28px;
+  animation: hazard-move 1.2s linear infinite;
+}
+
+@keyframes boss-pulse {
+  0%, 100% {
+    box-shadow: 0 0 16px rgba(224, 57, 43, 0.7), inset 0 0 12px rgba(224, 57, 43, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(224, 57, 43, 1), inset 0 0 24px rgba(224, 57, 43, 0.7);
+  }
+}
+
+.animate-boss-pulse {
+  animation: boss-pulse 1.4s ease-in-out infinite;
+}
+
+/* Authentic Caçapa Joker Activation & Visual Effects */
+@keyframes rotate-rays {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes card-hop {
+  0% { transform: scale(1) translateY(0); }
+  25% { transform: scale(1.15, 0.85) translateY(2px); }
+  50% { transform: scale(0.92, 1.15) translateY(-16px); }
+  75% { transform: scale(1.05, 0.96) translateY(-4px); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+@keyframes sheen-sweep {
+  0% { transform: translateX(-180%) skewX(-25deg); opacity: 0; }
+  20% { opacity: 0.85; }
+  80% { opacity: 0.85; }
+  100% { transform: translateX(280%) skewX(-25deg); opacity: 0; }
+}
+
+@keyframes screen-flash {
+  0% { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+
+@keyframes counter-pop {
+  0% { transform: scale(1) rotate(0deg); }
+  35% { transform: scale(1.25) rotate(-3.5deg); }
+  70% { transform: scale(0.95) rotate(1.5deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes spin-full {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-rotate-rays {
+  animation: rotate-rays 10s linear infinite;
+}
+
+.animate-card-hop {
+  animation: card-hop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-sheen-sweep {
+  animation: sheen-sweep 0.65s ease-out;
+}
+
+.animate-counter-pop {
+  animation: counter-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-spin-once {
+  animation: spin-full 0.45s ease-out;
+}
+
+@keyframes neon-flicker {
+  0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px #ff3fa4);
+  }
+  20%, 21.999%, 63%, 63.999%, 65%, 69.999% {
+    opacity: 0.68;
+    filter: drop-shadow(0 0 2px #ff3fa4);
+  }
+}
+
+.animate-neon-flicker {
+  animation: neon-flicker 4.8s infinite;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
-  background: #0f172a;
+  background: var(--bg-dark);
   color: #e2e8f0;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--font-cacapa);
 }
 
 #root {

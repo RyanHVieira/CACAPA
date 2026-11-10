@@ -20,7 +20,7 @@ export function DashboardPage() {
                 to="/pool"
                 className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-pink-600 rounded-md hover:from-purple-500 hover:to-pink-500 transition-all"
               >
-                🎱 Jogar Sinuca Balatro
+                🎱 Jogar Caçapa
               </Link>
               <button
                 onClick={logout}
@@ -53,7 +53,7 @@ export function DashboardPage() {
               >
                 <div className="text-4xl mb-2">🎱</div>
                 <h3 className="text-xl font-bold text-amber-300 group-hover:text-amber-200 transition-colors">
-                  Sinuca Balatro
+                  Caçapa
                 </h3>
                 <p className="text-slate-400 mt-2">
                   8 tacadas por round. Cada caçapa aumenta o multiplicador.
