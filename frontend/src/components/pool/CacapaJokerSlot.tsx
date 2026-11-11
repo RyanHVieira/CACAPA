@@ -6,7 +6,7 @@ import { JokerBottleCanvas } from './JokerBottleCanvas';
  * Multiplicador de tamanho configurável para os Joker Card Slots.
  * Altere este valor para redimensionar proporcionalmente todos os slots de coringa.
  */
-export const JOKER_SLOT_SCALE_MULTIPLIER = 1.0;
+export const JOKER_SLOT_SCALE_MULTIPLIER = 1.5;
 
 interface CacapaJokerSlotProps {
   card: Card | null;

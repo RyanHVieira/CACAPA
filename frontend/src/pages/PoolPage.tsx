@@ -19,8 +19,24 @@ import { AdminDebugModal } from '../components/pool/AdminDebugModal';
 import { CueManager } from '../game/cues/CueManager';
 import { CRTEffects } from '../components/pool/CRTEffects';
 import { AMBIENT_THEMES } from '../game/scenes/TableScenes';
+import { GlobalFpsCounter } from '../components/pool/GlobalFpsCounter';
 
 export const ASIDE_HEIGHT_SCALE = 2.4;
+
+/**
+ * =========================================================================
+ * ⚙️ VARIÁVEL DE TAMANHO DA DIV DE CORINGAS E CONSUMÍVEIS (HEADER)
+ * =========================================================================
+ * Altere este valor para redimensionar toda a div de coringas e consumíveis.
+ * Localização: frontend/src/pages/PoolPage.tsx (Linha ~32)
+ *
+ * Exemplos:
+ *   1.0  = 100% (tamanho padrão)
+ *   1.15 = 115% (15% maior)
+ *   1.25 = 125% (25% maior)
+ *   0.85 = 85%  (15% menor)
+ */
+export const JOKER_AND_CONSUMABLE_BAR_SCALE = 1.0;
 
 const hScale = (px: number) => `${Math.max(1, Math.round(px * ASIDE_HEIGHT_SCALE))}px`;
 
@@ -71,6 +87,25 @@ export function PoolPage() {
       return 'auto';
     }
   });
+
+  const [showFps, setShowFps] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('cacapa_show_fps');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const handleToggleFps = () => {
+    setShowFps((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('cacapa_show_fps', String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const konamiIndexRef = useRef<number>(0);
@@ -307,6 +342,8 @@ export function PoolPage() {
     if (isShopOpen) {
     return (
       <div className="w-screen h-screen overflow-hidden bg-[#2b1408] text-slate-100 flex flex-col justify-between select-none font-sans relative">
+        <GlobalFpsCounter show={showFps} onToggle={handleToggleFps} />
+
         <CacapaShop
           engine={engine}
           onNextRound={() => {
@@ -374,6 +411,14 @@ export function PoolPage() {
                 >
                   <span className="text-2xl">📺</span>
                   <span>{isCrtEnabled ? 'Efeito CRT: LIGADO' : 'Efeito CRT: DESLIGADO'}</span>
+                </button>
+
+                <button
+                  onClick={handleToggleFps}
+                  className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#232b30] hover:bg-[#2d373e] text-[#ffd36a] font-black flex items-center gap-3.5 border-2 border-[#0b0710] cursor-pointer transition-colors active:scale-98"
+                >
+                  <span className="text-2xl">⚡</span>
+                  <span>{showFps ? 'Contador de FPS: LIGADO' : 'Contador de FPS: DESLIGADO'}</span>
                 </button>
 
                 {/* SLIDER DE ZOOM DA MESA */}
@@ -582,6 +627,7 @@ export function PoolPage() {
 
     return (
     <div className="w-screen h-screen max-h-screen overflow-hidden bg-[#0b0710] text-slate-100 flex items-center justify-center p-0 select-none font-sans relative">
+      <GlobalFpsCounter show={showFps} onToggle={handleToggleFps} />
       <div id="w" className={`relative flex p-1.5 sm:p-2 xl:p-2.5 gap-2 sm:gap-2.5 z-10 ${!isCrtEnabled ? 'nocrt' : ''}`}>
                 <CacapaBackground tableIndex={effectiveTableIndex} />
 
@@ -823,28 +869,58 @@ export function PoolPage() {
           <header className="flex items-center justify-between gap-3 h-24 sm:h-28 xl:h-36 flex-shrink-0 z-30 relative pointer-events-auto">
             <div className="w-4 sm:w-12 lg:w-28 flex-shrink-0" />
 
-            <div className="flex-1 flex justify-center items-center gap-2 sm:gap-3 xl:gap-4">
-              {Array.from({ length: 5 }).map((_, idx) => (
-                <CacapaJokerSlot
-                  key={`joker-slot-${idx}`}
-                  card={engine.ownedJokers[idx] || null}
-                  index={idx}
-                  isActivating={activatingJokerIdx === idx}
-                  canDrag={!engine.areBallsMoving()}
-                  onOpenDeck={() => setIsBallRackOpen(true)}
-                  onSellCard={handleSellJoker}
-                  onDropOnSlot={handleReorderJokers}
-                />
-              ))}
+            {/* CONTAINER COM BACKGROUND PARA CORINGAS E CONSUMÍVEIS */}
+            <div className="flex-1 flex justify-center items-center overflow-visible">
+              <div
+                style={{
+                  transform: `scale(${JOKER_AND_CONSUMABLE_BAR_SCALE})`,
+                  transformOrigin: 'center center',
+                }}
+                className="relative flex items-center justify-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 rounded-3xl bg-gradient-to-b from-[#2a1a10] via-[#1c120c] to-[#120a06] border-[4px] border-[#0b0710] shadow-[0_8px_0_rgba(0,0,0,0.65),inset_0_2px_4px_rgba(255,255,255,0.08)] select-none overflow-visible flex-shrink-0 transition-transform duration-150"
+              >
+                {/* Brilho superior de verniz de madeira */}
+                <div className="absolute inset-x-5 top-1 h-[2px] bg-gradient-to-r from-transparent via-[#ffd36a]/30 to-transparent pointer-events-none" />
 
-              <div className="h-8 w-[2px] bg-[#334155]/60 mx-1 hidden sm:block" />
+                {/* Plaquinha da Prateleira */}
+                <div className="absolute -top-3.5 left-5 px-2.5 py-0.5 rounded-lg bg-[#3a2012] border-2 border-[#0b0710] shadow-sm flex items-center gap-1.5 pointer-events-none z-10">
+                  <span className="text-[11px] leading-none">🍾</span>
+                  <span className="text-[9px] sm:text-[10px] font-black text-[#ffd36a] uppercase tracking-wider font-cacapa leading-none">
+                    Prateleira de Bebidas
+                  </span>
+                </div>
 
-              <ConsumableSlot
-                consumable={engine.ownedConsumable}
-                onUse={handleUseConsumable}
-                onSell={handleSellConsumable}
-                nextShotMultMultiplier={engine.nextShotMultMultiplier}
-              />
+                {/* SLOTS DE CORINGAS (GARRAFAS) */}
+                <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-visible">
+                  {Array.from({ length: 5 }).map((_, idx) => (
+                    <CacapaJokerSlot
+                      key={`joker-slot-${idx}`}
+                      card={engine.ownedJokers[idx] || null}
+                      index={idx}
+                      isActivating={activatingJokerIdx === idx}
+                      canDrag={!engine.areBallsMoving()}
+                      onOpenDeck={() => setIsBallRackOpen(true)}
+                      onSellCard={handleSellJoker}
+                      onDropOnSlot={handleReorderJokers}
+                    />
+                  ))}
+                </div>
+
+                {/* DIVISÓRIA DECORATIVA ENTRE CORINGAS E CONSUMÍVEL */}
+                <div className="h-20 sm:h-24 w-[3px] bg-gradient-to-b from-transparent via-[#8a5d2b]/70 to-transparent rounded-full mx-0.5 sm:mx-1 flex-shrink-0" />
+
+                {/* SLOT DE CONSUMÍVEL */}
+                <div className="overflow-visible flex-shrink-0">
+                  <ConsumableSlot
+                    consumable={engine.ownedConsumable}
+                    onUse={handleUseConsumable}
+                    onSell={handleSellConsumable}
+                    nextShotMultMultiplier={engine.nextShotMultMultiplier}
+                  />
+                </div>
+
+                {/* Apoio / rodapé de madeira na base */}
+                <div className="absolute inset-x-3 bottom-0.5 h-1 rounded-full bg-gradient-to-r from-[#5a3a22] via-[#8a5d2b] to-[#5a3a22] border-t border-[#3b2314] pointer-events-none opacity-80" />
+              </div>
             </div>
 
             <div className="flex items-center gap-2.5 flex-shrink-0">
@@ -939,6 +1015,14 @@ export function PoolPage() {
               >
                 <span className="text-2xl">📺</span>
                 <span>{isCrtEnabled ? 'Efeito CRT: LIGADO' : 'Efeito CRT: DESLIGADO'}</span>
+              </button>
+
+              <button
+                onClick={handleToggleFps}
+                className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#232b30] hover:bg-[#2d373e] text-[#ffd36a] font-black flex items-center gap-3.5 border-2 border-[#0b0710] cursor-pointer transition-colors active:scale-98"
+              >
+                <span className="text-2xl">⚡</span>
+                <span>{showFps ? 'Contador de FPS: LIGADO' : 'Contador de FPS: DESLIGADO'}</span>
               </button>
 
               {/* SLIDER DE ZOOM DA MESA */}

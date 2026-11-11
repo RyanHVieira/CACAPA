@@ -1,8 +1,9 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { CacapaPoolEngine } from '../../game/engine/CacapaPoolEngine';
 import { Ball } from '../../game/models/Ball';
 import { Vector2D } from '../../game/models/Vector2D';
 import { CueRenderer } from '../../game/cues/CueRenderer';
+import { BallEnhancementCatalog } from '../../game/enhancements/BallEnhancement';
 
 export const TABLE_PAD_X = 260;
 export const TABLE_PAD_Y = 180;
@@ -34,6 +35,18 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
   const timeRef = useRef<number>(0);
   const tallyProgressRef = useRef<number>(0);
   const lastScoreRef = useRef<number>(0);
+
+  // Estado para o card de inspeção acionado SOMENTE com o botão direito na bola
+  const [inspectedBall, setInspectedBall] = useState<{
+    ball: Ball;
+    x: number;
+    y: number;
+  } | null>(null);
+  const inspectedBallRef = useRef<{ ball: Ball; x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    inspectedBallRef.current = inspectedBall;
+  }, [inspectedBall]);
 
     const getCanvasCoords = useCallback((clientX: number, clientY: number): Vector2D | null => {
     const canvas = canvasRef.current;
@@ -83,13 +96,33 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
     }
   }, [engine, onShotFired]);
 
-    const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  const getTooltipTransform = (x: number, y: number) => {
+    const isNearTop = y < 190;
+    const isNearLeft = x < 160;
+    const isNearRight = x > (window.innerWidth || 1000) - 160;
+
+    if (isNearTop) {
+      if (isNearLeft) return 'translate(10px, 20px)';
+      if (isNearRight) return 'translate(-100%, 20px)';
+      return 'translate(-50%, 20px)';
+    }
+
+    if (isNearLeft) return 'translate(10px, -115%)';
+    if (isNearRight) return 'translate(-100%, -115%)';
+    return 'translate(-50%, -115%)';
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (inspectedBall) {
+      setInspectedBall(null);
+    }
+
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     updateAim(e.clientX, e.clientY);
     startCharging();
   };
 
-    useEffect(() => {
+  useEffect(() => {
     const handleGlobalPointerMove = (e: PointerEvent) => {
       updateAim(e.clientX, e.clientY);
     };
@@ -101,10 +134,46 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
     };
 
     const handleGlobalContextMenu = (e: MouseEvent) => {
+      // Se estava carregando tacada, botão direito cancela a tacada
       if (isChargingRef.current) {
         e.preventDefault();
         isChargingRef.current = false;
         currentPowerRef.current = 0;
+        setInspectedBall(null);
+        return;
+      }
+
+      const coords = getCanvasCoords(e.clientX, e.clientY);
+      if (!coords || engine.areBallsMoving()) {
+        if (inspectedBallRef.current) {
+          e.preventDefault();
+          setInspectedBall(null);
+        }
+        return;
+      }
+
+      // Procurar bola ativa sob o cursor do botão direito
+      const hitBall = engine.balls.find(
+        (b) =>
+          !b.isPocketed &&
+          !b.isSinking &&
+          Math.hypot(coords.x - b.pos.x, coords.y - b.pos.y) <= b.radius + 8
+      );
+
+      if (hitBall) {
+        e.preventDefault();
+        setInspectedBall((prev) =>
+          prev?.ball.id === hitBall.id
+            ? null
+            : {
+                ball: hitBall,
+                x: e.clientX,
+                y: e.clientY,
+              }
+        );
+      } else if (inspectedBallRef.current) {
+        e.preventDefault();
+        setInspectedBall(null);
       }
     };
 
@@ -117,16 +186,20 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
       window.removeEventListener('pointerup', handleGlobalPointerUp);
       window.removeEventListener('contextmenu', handleGlobalContextMenu);
     };
-  }, [updateAim, releaseShot]);
+  }, [updateAim, releaseShot, engine, getCanvasCoords]);
 
-    useEffect(() => {
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !e.repeat && engine.state === 'AIMING') {
+        setInspectedBall(null);
         e.preventDefault();
         startCharging();
-      } else if (e.code === 'Escape' && isChargingRef.current) {
-                isChargingRef.current = false;
-        currentPowerRef.current = 0;
+      } else if (e.code === 'Escape') {
+        setInspectedBall(null);
+        if (isChargingRef.current) {
+          isChargingRef.current = false;
+          currentPowerRef.current = 0;
+        }
       }
     };
 
@@ -360,10 +433,16 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
       const dt = Math.min(0.033, (currentTime - lastTime) / 1000);
       lastTime = currentTime;
 
+
             if (engine.particleSystem.freezeFrames > 0) {
         engine.particleSystem.freezeFrames--;
       } else {
         engine.update(dt);
+      }
+
+      if (inspectedBallRef.current && engine.areBallsMoving()) {
+        inspectedBallRef.current = null;
+        setInspectedBall(null);
       }
 
             if (isChargingRef.current && engine.state === 'AIMING') {
@@ -547,6 +626,135 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
       ref={containerRef}
       className="relative w-full h-full max-h-full flex flex-col items-center justify-center select-none py-1 gap-1 overflow-visible"
     >
+      {/* CARD DE INFORMAÇÕES DA BOLA (ACIONADO SOMENTE COM BOTÃO DIREITO NA BOLA) */}
+      {inspectedBall && !isChargingRef.current && (
+        <div
+          style={{
+            left: `${inspectedBall.x}px`,
+            top: `${inspectedBall.y}px`,
+            transform: getTooltipTransform(inspectedBall.x, inspectedBall.y),
+          }}
+          className="fixed z-[9990] select-none flex flex-col gap-2 p-3 rounded-2xl bg-[#140c1c]/95 border-[3px] border-[#0b0710] shadow-[0_12px_32px_rgba(0,0,0,0.85),inset_0_1px_2px_rgba(255,255,255,0.1)] backdrop-blur-md min-w-[220px] max-w-[290px] font-cacapa animate-in fade-in zoom-in-95 duration-150"
+        >
+          {/* Header com mini prévia da bola, nome e botão fechar */}
+          <div className="flex items-center justify-between gap-2 pb-2 border-b border-white/10">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center font-black text-xs border-[2.5px] border-[#0b0710] shadow-md flex-shrink-0"
+                style={{
+                  backgroundColor: inspectedBall.ball.isCue ? '#ffffff' : inspectedBall.ball.color,
+                  color:
+                    inspectedBall.ball.isCue ||
+                    inspectedBall.ball.number === 1 ||
+                    inspectedBall.ball.number === 9
+                      ? '#0b0710'
+                      : '#ffffff',
+                }}
+              >
+                {inspectedBall.ball.isCue ? '⚪' : inspectedBall.ball.number}
+              </div>
+
+              <div className="flex flex-col min-w-0">
+                <span className="text-white font-black text-sm tracking-wide leading-tight truncate cacapa-stroke-sm">
+                  {inspectedBall.ball.isCue
+                    ? 'BOLA BRANCA'
+                    : inspectedBall.ball.isEight
+                    ? 'BOLA 8 (PRETA)'
+                    : `BOLA ${inspectedBall.ball.number}`}
+                </span>
+                <span className="text-[10px] text-[#9ff1ff] font-bold uppercase tracking-wider leading-none">
+                  {inspectedBall.ball.isCue
+                    ? 'Tacadeira'
+                    : inspectedBall.ball.isEight
+                    ? 'Neutra (Preta)'
+                    : inspectedBall.ball.isSolid
+                    ? 'Bola Lisa (1 a 7)'
+                    : 'Bola Listrada (9 a 15)'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setInspectedBall(null)}
+              className="w-6 h-6 rounded-lg bg-[#251733] hover:bg-[#3d2654] border border-[#0b0710] text-slate-300 hover:text-white flex items-center justify-center text-xs font-bold cursor-pointer transition-colors"
+              title="Fechar"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Valor da Bola em Fichas */}
+          <div className="flex items-center justify-between bg-[#1f132b] px-3 py-1.5 rounded-xl border border-white/5 shadow-inner">
+            <span className="text-xs text-[#9fb4a8] font-bold">Valor da Bola:</span>
+            <span className="text-sm sm:text-base font-black text-[#ffd36a] cacapa-stroke-sm">
+              {inspectedBall.ball.isCue
+                ? '0 Fichas'
+                : `+${inspectedBall.ball.isEight ? 60 : inspectedBall.ball.baseChips ?? (10 + inspectedBall.ball.number * 5)} Fichas`}
+            </span>
+          </div>
+
+          {/* Aviso especial para bola branca */}
+          {inspectedBall.ball.isCue && (
+            <div className="text-[11px] text-[#ff5a4a] bg-[#ff3b30]/15 px-2.5 py-1.5 rounded-xl border border-[#ff3b30]/30 font-bold leading-tight">
+              ⚠️ Não encaçape! Comete falta e perde tacada.
+            </div>
+          )}
+
+          {/* Bônus de ouro se houver */}
+          {inspectedBall.ball.goldBonus > 0 && (
+            <div className="flex items-center justify-between bg-[#fbbf24]/15 px-3 py-1.5 rounded-xl border border-[#fbbf24]/30 text-[#fef08a] text-xs font-black">
+              <span>Bônus em Dinheiro:</span>
+              <span>+${inspectedBall.ball.goldBonus}</span>
+            </div>
+          )}
+
+          {/* Modificadores */}
+          {(() => {
+            const mod =
+              inspectedBall.ball.enhancement ||
+              (engine.ballMods?.[inspectedBall.ball.number]
+                ? BallEnhancementCatalog.getById(engine.ballMods[inspectedBall.ball.number])
+                : null);
+
+            if (mod) {
+              return (
+                <div
+                  className="flex flex-col gap-1 p-2 rounded-xl border"
+                  style={{
+                    backgroundColor: `${mod.color || '#3ec1d3'}15`,
+                    borderColor: `${mod.color || '#3ec1d3'}45`,
+                  }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base leading-none">{mod.icon || '✨'}</span>
+                    <span
+                      className="text-xs font-black uppercase tracking-wide leading-none truncate"
+                      style={{ color: mod.color || '#3ec1d3' }}
+                    >
+                      {mod.name}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-200 leading-snug font-sans font-medium">
+                    {mod.description}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider px-1 text-center">
+                Sem modificadores ativos
+              </div>
+            );
+          })()}
+
+          {/* Dica de fechamento */}
+          <div className="text-[9px] text-slate-400 font-medium text-center pt-0.5 border-t border-white/5">
+            Clique com o botão direito, esquerdo ou Esc para fechar
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 min-h-0 w-full flex items-center justify-center overflow-visible">
         <canvas
           ref={canvasRef}
