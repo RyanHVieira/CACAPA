@@ -1,5 +1,3 @@
-// Table Scene System - 1:1 clone of prototype artistic style
-// Each table (0-9) has a unique themed background scene
 
 export interface ScenePalette {
   light: [number, number, number];
@@ -7,31 +5,19 @@ export interface ScenePalette {
   dark: [number, number, number];
 }
 
-// Color palettes per table (matching prototype PAL array)
 export const SCENE_PALETTES: ScenePalette[] = [
-  // Table 0: Boteco do Zé
-  { light: [240, 160, 50], mid: [130, 50, 30], dark: [26, 10, 14] },
-  // Table 1: Clube do Bairro
-  { light: [90, 190, 120], mid: [30, 90, 70], dark: [8, 24, 22] },
-  // Table 2: Salão VIP
-  { light: [230, 160, 70], mid: [120, 20, 50], dark: [26, 6, 18] },
-  // Table 3: Mesa do Chefão
-  { light: [200, 50, 50], mid: [60, 34, 48], dark: [12, 8, 14] },
-  // Table 4: Sinuca da Praia
-  { light: [255, 200, 110], mid: [40, 190, 210], dark: [10, 70, 110] },
-  // Table 5: Cassino Neon
-  { light: [255, 70, 210], mid: [90, 30, 160], dark: [14, 6, 32] },
-  // Table 6: Bar do Pescador
-  { light: [110, 210, 230], mid: [30, 90, 140], dark: [6, 20, 36] },
-  // Table 7: Cobertura 77
-  { light: [170, 130, 255], mid: [60, 40, 130], dark: [10, 8, 30] },
-  // Table 8: Salão Imperial
-  { light: [255, 200, 90], mid: [150, 30, 40], dark: [36, 6, 14] },
-  // Table 9: Mesa do Destino
-  { light: [170, 110, 255], mid: [60, 30, 120], dark: [10, 6, 28] },
+    { light: [240, 160, 50], mid: [130, 50, 30], dark: [26, 10, 14] },
+    { light: [90, 190, 120], mid: [30, 90, 70], dark: [8, 24, 22] },
+    { light: [230, 160, 70], mid: [120, 20, 50], dark: [26, 6, 18] },
+    { light: [200, 50, 50], mid: [60, 34, 48], dark: [12, 8, 14] },
+    { light: [255, 200, 110], mid: [40, 190, 210], dark: [10, 70, 110] },
+    { light: [255, 70, 210], mid: [90, 30, 160], dark: [14, 6, 32] },
+    { light: [110, 210, 230], mid: [30, 90, 140], dark: [6, 20, 36] },
+    { light: [170, 130, 255], mid: [60, 40, 130], dark: [10, 8, 30] },
+    { light: [255, 200, 90], mid: [150, 30, 40], dark: [36, 6, 14] },
+    { light: [170, 110, 255], mid: [60, 30, 120], dark: [10, 6, 28] },
 ];
 
-// Ambient themes per table (matching prototype AM array)
 export interface AmbientTheme {
   wood: string;
   markings: string;
@@ -50,8 +36,7 @@ export interface AmbientTheme {
 }
 
 export const AMBIENT_THEMES: AmbientTheme[] = [
-  // Table 0: Boteco do Zé
-  {
+    {
     wood: '#7a4422',
     markings: '#f4ecd8',
     light: [255, 200, 120],
@@ -67,8 +52,7 @@ export const AMBIENT_THEMES: AmbientTheme[] = [
     decorations: ['candle', 'ball', 'tarot', 'candle', 'ball', 'tarot'],
     objects: ['candle', 'ball', 'tarot', 'candle', 'ball', 'tarot'],
   },
-  // Table 1: Clube do Bairro
-  {
+    {
     wood: '#5a6a44',
     markings: '#e8f5e8',
     light: [180, 220, 140],
@@ -84,8 +68,7 @@ export const AMBIENT_THEMES: AmbientTheme[] = [
     decorations: ['trophy', 'flag', 'cue', 'trophy', 'flag', 'cue'],
     objects: ['trophy', 'flag', 'cue', 'trophy', 'flag', 'cue'],
   },
-  // Table 2: Salão VIP
-  {
+    {
     wood: '#4a1a2a',
     markings: '#f4ecd8',
     light: [255, 180, 100],
@@ -101,8 +84,7 @@ export const AMBIENT_THEMES: AmbientTheme[] = [
     decorations: ['champagne', 'cigar', 'chips', 'champagne', 'cigar', 'chips'],
     objects: ['champagne', 'cigar', 'chips', 'champagne', 'cigar', 'chips'],
   },
-  // Table 3: Mesa do Chefão
-  {
+    {
     wood: '#2a0a14',
     markings: '#8b0000',
     light: [220, 60, 60],
@@ -118,8 +100,7 @@ export const AMBIENT_THEMES: AmbientTheme[] = [
     decorations: ['gun', 'money', 'cigar', 'gun', 'money', 'cigar'],
     objects: ['gun', 'money', 'cigar', 'gun', 'money', 'cigar'],
   },
-  // Table 4: Sinuca da Praia
-  {
+    {
     wood: '#8b7355',
     markings: '#f0e6d2',
     light: [255, 220, 140],
@@ -135,8 +116,7 @@ export const AMBIENT_THEMES: AmbientTheme[] = [
     decorations: ['palm', 'drink', 'surf', 'palm', 'drink', 'surf'],
     objects: ['palm', 'drink', 'surf', 'palm', 'drink', 'surf'],
   },
-  // Table 5: Cassino Neon
-  {
+    {
     wood: '#1a0a2a',
     markings: '#ff00ff',
     light: [255, 100, 255],
@@ -152,8 +132,7 @@ export const AMBIENT_THEMES: AmbientTheme[] = [
     decorations: ['dice', 'chip', 'card', 'dice', 'chip', 'card'],
     objects: ['dice', 'chip', 'card', 'dice', 'chip', 'card'],
   },
-  // Table 6: Bar do Pescador
-  {
+    {
     wood: '#3a5a6a',
     markings: '#a8d0e6',
     light: [140, 210, 240],
@@ -169,8 +148,7 @@ export const AMBIENT_THEMES: AmbientTheme[] = [
     decorations: ['fish', 'net', 'anchor', 'fish', 'net', 'anchor'],
     objects: ['fish', 'net', 'anchor', 'fish', 'net', 'anchor'],
   },
-  // Table 7: Cobertura 77
-  {
+    {
     wood: '#2a1a4a',
     markings: '#c8b8e8',
     light: [200, 180, 255],
@@ -186,8 +164,7 @@ export const AMBIENT_THEMES: AmbientTheme[] = [
     decorations: ['diamond', 'glass', 'watch', 'diamond', 'glass', 'watch'],
     objects: ['diamond', 'glass', 'watch', 'diamond', 'glass', 'watch'],
   },
-  // Table 8: Salão Imperial
-  {
+    {
     wood: '#5a1a14',
     markings: '#f4d8b8',
     light: [255, 210, 140],
@@ -203,8 +180,7 @@ export const AMBIENT_THEMES: AmbientTheme[] = [
     decorations: ['crown', 'scepter', 'orb', 'crown', 'scepter', 'orb'],
     objects: ['crown', 'scepter', 'orb', 'crown', 'scepter', 'orb'],
   },
-  // Table 9: Mesa do Destino
-  {
+    {
     wood: '#1a122a',
     markings: '#b8a8e8',
     light: [200, 170, 255],
@@ -222,7 +198,6 @@ export const AMBIENT_THEMES: AmbientTheme[] = [
   },
 ];
 
-// Helper function to draw a circle (matching prototype ci function)
 export function drawCircle(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -245,7 +220,6 @@ export function drawCircle(
   }
 }
 
-// Helper for quadratic curve drawing
 export function drawCurve(
   ctx: CanvasRenderingContext2D,
   x1: number, y1: number,
@@ -262,7 +236,6 @@ export function drawCurve(
   ctx.stroke();
 }
 
-// Helper to create radial gradient
 export function createRadialGradient(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, r: number,

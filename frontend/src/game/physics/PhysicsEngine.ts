@@ -20,13 +20,11 @@ export class PhysicsEngine {
   public subSteps: number = 8;
   public particles?: ParticleSystem;
 
-  // Sound / effect event listeners
-  public onBallHit?: (speed: number) => void;
+    public onBallHit?: (speed: number) => void;
   public onCushionHit?: (speed: number) => void;
   public onPocketBall?: (ball: Ball, pocket: Pocket) => void;
 
-  // Active shot stats tracker
-  private activeShotEvents: ShotPhysicsEvents = {
+    private activeShotEvents: ShotPhysicsEvents = {
     pocketedBalls: [],
     cushionHits: 0,
     cueFirstHitBall: null,
@@ -73,22 +71,18 @@ export class PhysicsEngine {
     const subDt = dt / this.subSteps;
 
     for (let step = 0; step < this.subSteps; step++) {
-      // 1. Move and apply friction
-      for (const ball of this.balls) {
+            for (const ball of this.balls) {
         ball.update(this.friction, subDt);
         if (ball.speed > this.activeShotEvents.maxVelocity) {
           this.activeShotEvents.maxVelocity = ball.speed;
         }
       }
 
-      // 2. Ball-to-ball collisions
-      this.resolveBallCollisions();
+            this.resolveBallCollisions();
 
-      // 3. Table cushions
-      this.resolveCushionCollisions();
+            this.resolveCushionCollisions();
 
-      // 4. Pocket checks
-      this.checkPockets();
+            this.checkPockets();
     }
   }
 
@@ -112,17 +106,15 @@ export class PhysicsEngine {
           const nx = dx / dist;
           const ny = dy / dist;
 
-          // Positional correction to prevent sticking
-          const overlap = 0.5 * (minDist - dist);
+                    const overlap = 0.5 * (minDist - dist);
           b1.pos.x -= nx * overlap;
           b1.pos.y -= ny * overlap;
           b2.pos.x += nx * overlap;
           b2.pos.y += ny * overlap;
 
-          // Relative velocity
-          const kx = b1.vel.x - b2.vel.x;
+                    const kx = b1.vel.x - b2.vel.x;
           const ky = b1.vel.y - b2.vel.y;
-          const p = 2 * (nx * kx + ny * ky) / 2; // Equal mass = 1
+          const p = 2 * (nx * kx + ny * ky) / 2;
 
           if (p > 0) {
             b1.vel.x -= p * nx * this.restitution;
@@ -139,8 +131,7 @@ export class PhysicsEngine {
               this.activeShotEvents.cueFirstHitBall = b1;
             }
 
-            // Necronomicon possession infection on contact
-            if (b1.isPossessed !== b2.isPossessed) {
+                        if (b1.isPossessed !== b2.isPossessed) {
               const target = b1.isPossessed ? b2 : b1;
               if (!target.isCue && !target.isPocketed) {
                 target.isPossessed = true;
@@ -151,8 +142,7 @@ export class PhysicsEngine {
               }
             }
 
-            // Visual juice: sparks and screen shake on hard hits
-            if (this.particles) {
+                        if (this.particles) {
               if (impactSpeed > 1.8) {
                 this.particles.spark((b1.pos.x + b2.pos.x) / 2, (b1.pos.y + b2.pos.y) / 2, 5, '#ffffff');
                 this.particles.addShake(0.12);
@@ -176,8 +166,7 @@ export class PhysicsEngine {
     for (const ball of this.balls) {
       if (ball.isPocketed || ball.isSinking) continue;
 
-      // Left cushion (mask 4)
-      if (ball.pos.x - ball.radius < this.table.minX) {
+            if (ball.pos.x - ball.radius < this.table.minX) {
         if (ball.pos.y > this.table.minY + 22 && ball.pos.y < this.table.maxY - 22) {
           ball.pos.x = this.table.minX + ball.radius;
           ball.vel.x = -ball.vel.x * this.cushionRestitution;
@@ -185,8 +174,7 @@ export class PhysicsEngine {
           this.handleCushionHit(ball);
         }
       }
-      // Right cushion (mask 8)
-      else if (ball.pos.x + ball.radius > this.table.maxX) {
+            else if (ball.pos.x + ball.radius > this.table.maxX) {
         if (ball.pos.y > this.table.minY + 22 && ball.pos.y < this.table.maxY - 22) {
           ball.pos.x = this.table.maxX - ball.radius;
           ball.vel.x = -ball.vel.x * this.cushionRestitution;
@@ -195,8 +183,7 @@ export class PhysicsEngine {
         }
       }
 
-      // Top cushion (mask 1)
-      if (ball.pos.y - ball.radius < this.table.minY) {
+            if (ball.pos.y - ball.radius < this.table.minY) {
         const midX = this.table.width / 2;
         const inLeftSegment = ball.pos.x > this.table.minX + 22 && ball.pos.x < midX - 22;
         const inRightSegment = ball.pos.x > midX + 22 && ball.pos.x < this.table.maxX - 22;
@@ -207,8 +194,7 @@ export class PhysicsEngine {
           this.handleCushionHit(ball);
         }
       }
-      // Bottom cushion (mask 2)
-      else if (ball.pos.y + ball.radius > this.table.maxY) {
+            else if (ball.pos.y + ball.radius > this.table.maxY) {
         const midX = this.table.width / 2;
         const inLeftSegment = ball.pos.x > this.table.minX + 22 && ball.pos.x < midX - 22;
         const inRightSegment = ball.pos.x > midX + 22 && ball.pos.x < this.table.maxX - 22;
@@ -236,30 +222,26 @@ export class PhysicsEngine {
     for (const ball of this.balls) {
       if (ball.isPocketed) continue;
 
-      // 1. Smooth Gravitational Pocket Suction when approaching pocket mouth
-      for (const pocket of this.table.pockets) {
+            for (const pocket of this.table.pockets) {
         const dx = pocket.x - ball.pos.x;
         const dy = pocket.y - ball.pos.y;
         const dist = Math.hypot(dx, dy);
 
-        // Suction influence zone
-        const suctionRadius = pocket.radius + 22;
+                const suctionRadius = pocket.radius + 22;
         if (dist < suctionRadius && dist > 1 && !ball.isSinking) {
           const factor = Math.pow(1 - dist / suctionRadius, 1.6);
           const pullStrength = 0.55 * factor;
           ball.vel.x += (dx / dist) * pullStrength;
           ball.vel.y += (dy / dist) * pullStrength;
 
-          // Smooth curved funnel damping into pocket
-          ball.vel.x *= 0.985;
+                    ball.vel.x *= 0.985;
           ball.vel.y *= 0.985;
         }
       }
 
       if (ball.isSinking) continue;
 
-      // 2. Pocket Drop / Capture
-      const pocket = this.table.checkPocket(ball);
+            const pocket = this.table.checkPocket(ball);
       if (pocket) {
         ball.pocket(pocket.x, pocket.y);
         if (ball.isCue) {

@@ -52,26 +52,21 @@ export abstract class Card {
     this.edition = edition;
   }
 
-  // Hook for when a shot is completed and scoring is calculated
-  public onScoreEval(_ctx: ScoreContext): TriggerResult[] {
+    public onScoreEval(_ctx: ScoreContext): TriggerResult[] {
     return [];
   }
 
-  // Hook for each individual ball that gets pocketed
-  public onBallPocketed(_ball: Ball, _pocket: Pocket, _ctx: ShotContext): TriggerResult[] {
+    public onBallPocketed(_ball: Ball, _pocket: Pocket, _ctx: ShotContext): TriggerResult[] {
     return [];
   }
 
-  // Hook for round cashout / end of round
-  public onRoundEnd(_ctx: { money: number; shotsRemaining: number }): TriggerResult[] {
+    public onRoundEnd(_ctx: { money: number; shotsRemaining: number }): TriggerResult[] {
     return [];
   }
 
-  // Consumable usage (for Tarots)
-  public onUse?(_engine: unknown): { success: boolean; message: string };
+    public onUse?(_engine: unknown): { success: boolean; message: string };
 
-  // Calculate bonus from special edition (Foil / Holo / Poly)
-  protected getEditionTriggers(): TriggerResult[] {
+    protected getEditionTriggers(): TriggerResult[] {
     const results: TriggerResult[] = [];
     if (this.edition === 'Foil') {
       results.push({
@@ -104,13 +99,13 @@ export abstract class Card {
   public getRarityColor(): string {
     switch (this.rarity) {
       case 'Comum':
-        return '#3b82f6'; // Blue
+        return '#3b82f6';
       case 'Incomum':
-        return '#10b981'; // Emerald
+        return '#10b981';
       case 'Rara':
-        return '#ef4444'; // Ruby Red
+        return '#ef4444';
       case 'Lendária':
-        return '#a855f7'; // Purple
+        return '#a855f7';
       default:
         return '#64748b';
     }

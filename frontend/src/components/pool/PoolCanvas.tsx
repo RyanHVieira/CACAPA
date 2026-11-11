@@ -18,8 +18,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const powerFillBarRef = useRef<HTMLDivElement | null>(null);
 
-  // Refs for high-frequency 60fps animation without React re-render overhead
-  const isChargingRef = useRef<boolean>(false);
+    const isChargingRef = useRef<boolean>(false);
   const chargeTimeRef = useRef<number>(0);
   const currentPowerRef = useRef<number>(0);
   const isRisingRef = useRef<boolean>(true);
@@ -28,8 +27,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
   const tallyProgressRef = useRef<number>(0);
   const lastScoreRef = useRef<number>(0);
 
-  // Helper to convert screen coordinates to canvas coordinate space (1040 x 520)
-  const getCanvasCoords = useCallback((clientX: number, clientY: number): Vector2D | null => {
+    const getCanvasCoords = useCallback((clientX: number, clientY: number): Vector2D | null => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
@@ -41,8 +39,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
     );
   }, []);
 
-  // Update aim direction towards pointer (works anywhere on screen, even while charging!)
-  const updateAim = useCallback(
+    const updateAim = useCallback(
     (clientX: number, clientY: number) => {
       if (engine.state !== 'AIMING' || !engine.cueBall) return;
       const coords = getCanvasCoords(clientX, clientY);
@@ -55,8 +52,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
     [engine, getCanvasCoords]
   );
 
-  // Start charging power
-  const startCharging = useCallback(() => {
+    const startCharging = useCallback(() => {
     if (engine.state !== 'AIMING' || !engine.cueBall || isChargingRef.current) return;
     isChargingRef.current = true;
     chargeTimeRef.current = 0;
@@ -64,8 +60,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
     isRisingRef.current = true;
   }, [engine]);
 
-  // Release and fire the shot
-  const releaseShot = useCallback(() => {
+    const releaseShot = useCallback(() => {
     if (!isChargingRef.current) return;
     isChargingRef.current = false;
 
@@ -80,15 +75,13 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
     }
   }, [engine, onShotFired]);
 
-  // Mouse / Touch handlers on canvas (starts charging)
-  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0 && e.pointerType === 'mouse') return; // Left click only
+    const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
     updateAim(e.clientX, e.clientY);
     startCharging();
   };
 
-  // Global window listeners: track mouse outside the table, even while charging!
-  useEffect(() => {
+    useEffect(() => {
     const handleGlobalPointerMove = (e: PointerEvent) => {
       updateAim(e.clientX, e.clientY);
     };
@@ -118,15 +111,13 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
     };
   }, [updateAim, releaseShot]);
 
-  // Keyboard shortcut: Spacebar holds to charge, releases to shoot
-  useEffect(() => {
+    useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !e.repeat && engine.state === 'AIMING') {
         e.preventDefault();
         startCharging();
       } else if (e.code === 'Escape' && isChargingRef.current) {
-        // Cancel shot
-        isChargingRef.current = false;
+                isChargingRef.current = false;
         currentPowerRef.current = 0;
       }
     };
@@ -146,8 +137,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
     };
   }, [engine, startCharging, releaseShot]);
 
-  // Authentic Caçapa Center Tally Animation (~0.8s)
-  const renderCenterTally = (
+    const renderCenterTally = (
     ctx: CanvasRenderingContext2D,
     cx: number,
     cy: number,
@@ -172,8 +162,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
       const off = (1 - kMerge) * 90;
       const bs = 1 - 0.3 * kMerge;
 
-      // FICHAS Box (Blue)
-      ctx.save();
+            ctx.save();
       ctx.translate(-off, 0);
       ctx.scale(bs * s0, bs * s0);
       ctx.fillStyle = '#2f86ff';
@@ -195,8 +184,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
       ctx.fillText(`${chips}`, 0, 8);
       ctx.restore();
 
-      // MULT Box (Red)
-      ctx.save();
+            ctx.save();
       ctx.translate(off, 0);
       ctx.scale(bs * s0, bs * s0);
       ctx.fillStyle = '#e0392b';
@@ -218,8 +206,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
       ctx.fillText(`${mult}`, 0, 8);
       ctx.restore();
 
-      // Center Cross
-      ctx.save();
+            ctx.save();
       ctx.font = 'bold 38px Oswald, Impact, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -231,8 +218,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
       ctx.restore();
     }
 
-    // Golden Ring Explosion
-    if (kRing > 0 && kRing < 1) {
+        if (kRing > 0 && kRing < 1) {
       ctx.save();
       ctx.globalAlpha = 1 - kRing;
       ctx.strokeStyle = '#ffd36a';
@@ -243,10 +229,9 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
       ctx.restore();
     }
 
-    // Total flying score
-    if (progress >= 0.5) {
+        if (progress >= 0.5) {
       const total = chips * mult;
-      const targetX = -cx + 120; // Towards HUD
+      const targetX = -cx + 120;
       const targetY = -cy + 220;
       const px = targetX * kFly;
       const py = targetY * kFly - 40 * Math.sin(Math.PI * kFly);
@@ -272,8 +257,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
     ctx.restore();
   };
 
-  // Trajectory raycast calculation
-  const calculateAimTrajectory = (
+    const calculateAimTrajectory = (
     start: Vector2D,
     angle: number,
     balls: Ball[],
@@ -285,8 +269,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
     let hitPos = start.add(dir.mult(hitDist));
     let deflectionDir: Vector2D | null = null;
 
-    // 1. Check ball collisions along ray
-    for (const b of balls) {
+        for (const b of balls) {
       if (b.isCue || b.isPocketed) continue;
 
       const toBall = b.pos.sub(start);
@@ -307,8 +290,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
       }
     }
 
-    // 2. Check table cushion bounds if no ball hit or cushion is closer
-    const checkCushionDist = () => {
+        const checkCushionDist = () => {
       let cushionDist = 9999;
       let cushionHit: Vector2D | null = null;
       const r = engine.cueBall?.radius || 17;
@@ -355,8 +337,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
     return { hitPos, hitBall, deflectionDir };
   };
 
-  // Main 60FPS animation loop
-  useEffect(() => {
+    useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -371,15 +352,13 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
       const dt = Math.min(0.033, (currentTime - lastTime) / 1000);
       lastTime = currentTime;
 
-      // 1. Hit-stop freeze frames
-      if (engine.particleSystem.freezeFrames > 0) {
+            if (engine.particleSystem.freezeFrames > 0) {
         engine.particleSystem.freezeFrames--;
       } else {
         engine.update(dt);
       }
 
-      // 2. Handle power oscillation while holding (0 -> 100 -> 0 -> 100 ...)
-      if (isChargingRef.current && engine.state === 'AIMING') {
+            if (isChargingRef.current && engine.state === 'AIMING') {
         const chargeCycleSpeed = 1.2;
         chargeTimeRef.current += dt * chargeCycleSpeed;
 
@@ -389,27 +368,23 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
         isRisingRef.current = cycle < 1;
       }
 
-      // Check if scoring tally should trigger
-      if (engine.currentScore !== lastScoreRef.current) {
+            if (engine.currentScore !== lastScoreRef.current) {
         lastScoreRef.current = engine.currentScore;
-        tallyProgressRef.current = 1.0; // trigger center tally
+        tallyProgressRef.current = 1.0;
       }
 
-      // 3. Render Table with Screen Shake
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const shake = engine.particleSystem.getShakeOffset();
       ctx.save();
       ctx.translate(shake.x, shake.y);
 
-      // Draw table with table index, shake, and time for rail props liquid sway
-      engine.table.draw(ctx, engine.ante - 1, engine.particleSystem.shake, time);
+            engine.table.draw(ctx, engine.ante - 1, engine.particleSystem.shake, time);
 
       const cueP = isChargingRef.current ? currentPowerRef.current : 0;
       const currentAngle = aimAngleRef.current;
 
-      // 4. Render Trajectory Guideline if aiming
-      if (engine.state === 'AIMING' && engine.cueBall && !engine.cueBall.isPocketed) {
+            if (engine.state === 'AIMING' && engine.cueBall && !engine.cueBall.isPocketed) {
         const trajectory = calculateAimTrajectory(
           engine.cueBall.pos,
           currentAngle,
@@ -419,8 +394,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
 
         ctx.save();
 
-        // Dotted aim line with animated dash offset
-        ctx.beginPath();
+                ctx.beginPath();
         ctx.setLineDash([6, 6]);
         ctx.lineDashOffset = -time * 26;
         ctx.moveTo(engine.cueBall.pos.x, engine.cueBall.pos.y);
@@ -431,16 +405,14 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
         ctx.lineWidth = 2 + cueP * 1.5;
         ctx.stroke();
 
-        // Ghost ball at impact
-        ctx.beginPath();
+                ctx.beginPath();
         ctx.setLineDash([]);
         ctx.arc(trajectory.hitPos.x, trajectory.hitPos.y, engine.cueBall.radius, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Target ball deflection line
-        if (trajectory.hitBall && trajectory.deflectionDir) {
+                if (trajectory.hitBall && trajectory.deflectionDir) {
           const arrowLen = 35 + cueP * 25;
           const targetStart = trajectory.hitBall.pos;
           const targetEnd = targetStart.add(trajectory.deflectionDir.mult(arrowLen));
@@ -452,8 +424,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
           ctx.lineWidth = 2.5;
           ctx.stroke();
 
-          // Arrowhead
-          const headAngle = Math.atan2(trajectory.deflectionDir.y, trajectory.deflectionDir.x);
+                    const headAngle = Math.atan2(trajectory.deflectionDir.y, trajectory.deflectionDir.x);
           ctx.beginPath();
           ctx.moveTo(targetEnd.x, targetEnd.y);
           ctx.lineTo(
@@ -471,13 +442,11 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
         ctx.restore();
       }
 
-      // 5. Render Balls
-      for (const ball of engine.balls) {
+            for (const ball of engine.balls) {
         ball.draw(ctx);
       }
 
-      // 6. Render Cue Stick (1:1 with prototype stick: #0b0710 dark outline, wood body, blue chalk tip)
-      if (engine.state === 'AIMING' && engine.cueBall && !engine.cueBall.isPocketed) {
+            if (engine.state === 'AIMING' && engine.cueBall && !engine.cueBall.isPocketed) {
         ctx.save();
         ctx.translate(engine.cueBall.pos.x, engine.cueBall.pos.y);
         ctx.rotate(currentAngle + Math.PI);
@@ -487,32 +456,28 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
 
         ctx.lineCap = 'round';
 
-        // Outer dark stroke #0b0710 (9px)
-        ctx.strokeStyle = '#0b0710';
+                ctx.strokeStyle = '#0b0710';
         ctx.lineWidth = 9;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(280, 0);
         ctx.stroke();
 
-        // Inner wood body #e8c48a (5px)
-        ctx.strokeStyle = '#e8c48a';
+                ctx.strokeStyle = '#e8c48a';
         ctx.lineWidth = 5;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(280, 0);
         ctx.stroke();
 
-        // Dark butt wrap (150 to 280)
-        ctx.strokeStyle = '#78350f';
+                ctx.strokeStyle = '#78350f';
         ctx.lineWidth = 5.5;
         ctx.beginPath();
         ctx.moveTo(150, 0);
         ctx.lineTo(280, 0);
         ctx.stroke();
 
-        // Blue chalk tip #4aa3ff (8px)
-        ctx.strokeStyle = '#4aa3ff';
+                ctx.strokeStyle = '#4aa3ff';
         ctx.lineWidth = 5;
         ctx.beginPath();
         ctx.moveTo(0, 0);
@@ -522,8 +487,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
         ctx.restore();
       }
 
-      // 7. Update Real-Time Caçapa Power Bar beneath the table
-      if (powerFillBarRef.current) {
+            if (powerFillBarRef.current) {
         if (cueP > 0) {
           powerFillBarRef.current.style.width = `${Math.min(100, Math.max(1, cueP * 100))}%`;
           powerFillBarRef.current.style.backgroundColor = `hsl(${120 - cueP * 120}, 85%, 52%)`;
@@ -532,11 +496,9 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
         }
       }
 
-      // 8. Render Particles and Floating Score Popups
-      engine.particleSystem.draw(ctx);
+            engine.particleSystem.draw(ctx);
 
-      // 9. Center Tally Score Animation (FICHAS × MULT collision)
-      if (tallyProgressRef.current > 0 && engine.lastChips > 0 && engine.lastMult > 0) {
+            if (tallyProgressRef.current > 0 && engine.lastChips > 0 && engine.lastMult > 0) {
         tallyProgressRef.current -= 0.022;
         const progress = 1.0 - tallyProgressRef.current;
         renderCenterTally(
@@ -549,7 +511,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
         );
       }
 
-      ctx.restore(); // Restore shake translation
+      ctx.restore();
 
       animId = requestAnimationFrame(loop);
     };
@@ -558,8 +520,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
     return () => cancelAnimationFrame(animId);
   }, [engine]);
 
-  // Report table canvas height to parent for 1:1 HUD Y-alignment
-  useEffect(() => {
+    useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !onTableHeightChange) return;
 
@@ -589,19 +550,17 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
       ref={containerRef}
       className="relative w-full h-full max-h-full flex flex-col items-center justify-center select-none py-1 gap-1"
     >
-      {/* 1. Main Table Canvas - Perfectly Scaled & Centered (Tamanho original com zoom completo) */}
-      <div className="flex-1 min-h-0 w-full flex items-center justify-center">
+            <div className="flex-1 min-h-0 w-full flex items-center justify-center">
         <canvas
           ref={canvasRef}
           width={1040}
           height={560}
           onPointerDown={handlePointerDown}
-          className="max-w-full max-h-full w-auto h-auto aspect-[1040/560] object-contain block cursor-crosshair touch-none rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.75)]"
+          className="max-w-full max-h-full w-auto h-auto aspect-[1040/560] object-contain block cursor-crosshair touch-none rounded-2xl"
         />
       </div>
 
-      {/* 2. Recessed Caçapa Power Bar cleanly located UNDER the table */}
-      <div className="w-[85%] max-w-[850px] h-3 sm:h-3.5 bg-[#1b1226] border-2 border-[#0b0710] rounded-full p-0.5 flex-shrink-0 relative overflow-hidden">
+            <div className="w-[85%] max-w-[850px] h-3 sm:h-3.5 bg-[#1b1226] border-2 border-[#0b0710] rounded-full p-0.5 flex-shrink-0 relative overflow-hidden">
         <div
           ref={powerFillBarRef}
           className="h-full rounded-full transition-none"

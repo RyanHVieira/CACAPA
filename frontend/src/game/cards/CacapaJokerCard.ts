@@ -23,8 +23,7 @@ export class CacapaJokerCard extends Card {
     this.isLegendary = !!def.isLegendary;
     this.rarity = this.isLegendary ? 'Lendária' : 'Comum';
 
-    // Icons matching B's visual identity
-    const iconMap: Record<string, string> = {
+        const iconMap: Record<string, string> = {
       tab: '↗',
       giz: '🟦',
       dob: '×2',
@@ -55,8 +54,7 @@ export class CacapaJokerCard extends Card {
     };
     this.icon = iconMap[def.id] || '🃏';
 
-    // Sell value in B: sellP = j => j.sv != null ? j.sv : Math.max(1, Math.floor(j.p * .75))
-    if (def.sellValue !== undefined) {
+        if (def.sellValue !== undefined) {
       this.sellPrice = def.sellValue;
     } else {
       this.sellPrice = Math.max(1, Math.floor(def.cost * 0.75));

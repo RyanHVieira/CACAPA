@@ -23,8 +23,7 @@ export const JokerBar: React.FC<JokerBarProps> = ({
   return (
     <div className="w-full max-w-[960px] mx-auto mt-4 bg-slate-900/90 border-2 border-slate-700/80 rounded-2xl p-4 shadow-xl backdrop-blur-md">
       <div className="flex flex-col md:flex-row gap-6 justify-between items-start">
-        {/* JOKERS SECTION (Max 5) */}
-        <div className="flex-1 w-full">
+                <div className="flex-1 w-full">
           <div className="flex justify-between items-center mb-2.5">
             <span className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
               <span>🃏</span> Coringas Ativos ({jokers.length}/{maxJokers})
@@ -71,15 +70,13 @@ export const JokerBar: React.FC<JokerBarProps> = ({
                       : 'bg-gradient-to-b from-slate-800 to-slate-900 border-2 border-slate-700'
                   }`}
                 >
-                  {/* Edition Tag */}
-                  {card.edition !== 'Base' && (
+                                    {card.edition !== 'Base' && (
                     <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] uppercase font-black px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow-md">
                       {card.edition}
                     </span>
                   )}
 
-                  {/* Card Header (Icon & Rarity) */}
-                  <div className="flex justify-between items-start">
+                                    <div className="flex justify-between items-start">
                     <span className="text-2xl drop-shadow">{card.icon}</span>
                     <span
                       className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded border"
@@ -93,8 +90,7 @@ export const JokerBar: React.FC<JokerBarProps> = ({
                     </span>
                   </div>
 
-                  {/* Card Title & Desc */}
-                  <div className="my-auto text-center">
+                                    <div className="my-auto text-center">
                     <h4 className="text-[11px] font-black text-amber-200 leading-tight group-hover:text-amber-300">
                       {card.name}
                     </h4>
@@ -103,15 +99,14 @@ export const JokerBar: React.FC<JokerBarProps> = ({
                     </p>
                   </div>
 
-                  {/* Card Footer: Sell button */}
-                  <div className="pt-1 border-t border-slate-700/60 flex justify-between items-center">
+                                    <div className="pt-1 border-t border-slate-700/60 flex justify-between items-center">
                     <span className="text-[8px] text-slate-400 font-mono">
                       x{card.timesTriggered}
                     </span>
                     <button
                       onClick={() => onSellCard('Joker', idx)}
                       className="text-[9px] font-bold text-red-400 hover:text-red-300 bg-red-950/80 hover:bg-red-900 px-1.5 py-0.5 rounded border border-red-800 transition-colors"
-                      title="Vender Coringa"
+                      title="Vender Curinga: 75% do valor"
                     >
                       Vender ${card.sellPrice}
                     </button>
@@ -122,8 +117,7 @@ export const JokerBar: React.FC<JokerBarProps> = ({
           </div>
         </div>
 
-        {/* CONSUMABLES / TAROTS SECTION (Max 2) */}
-        <div className="w-full md:w-auto md:border-l md:border-slate-800 md:pl-6">
+                <div className="w-full md:w-auto md:border-l md:border-slate-800 md:pl-6">
           <div className="flex justify-between items-center mb-2.5">
             <span className="text-xs font-black uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
               <span>🔮</span> Consumíveis ({consumables.length}/{maxConsumables})

@@ -1,5 +1,3 @@
-// Sound & Music Engine (1:1 with prototype CAÇAPA and authentic Caçapa ASMR vibe)
-// Includes procedural 8-bar Caçapa-style lo-fi jazz swing music loop using Web Audio API
 
 export class SoundManager {
   private static instance: SoundManager | null = null;
@@ -11,37 +9,32 @@ export class SoundManager {
   public soundVolume: number = 0.6;
   public musicVolume: number = 0.45;
 
-  // Web Audio nodes for ASMR synthesis & reverb
-  private noiseBuffer: AudioBuffer | null = null;
+    private noiseBuffer: AudioBuffer | null = null;
   private masterBus: GainNode | null = null;
   private musicBus: GainNode | null = null;
   private reverbNode: ConvolverNode | null = null;
   private lfoGain: GainNode | null = null;
 
-  // Music loop state
-  private musicIntervalId: ReturnType<typeof setInterval> | null = null;
+    private musicIntervalId: ReturnType<typeof setInterval> | null = null;
   private mStep: number = 0;
   private mT0: number = 0;
 
-  // 8-bar Caçapa Jazz Swing Progression (Rhodes Piano, Bass, Wobble Synth, Lo-fi Hat)
-  private readonly BPM = 88;
-  private readonly SW = 0.64; // Swing ratio
+    private readonly BPM = 88;
+  private readonly SW = 0.64;
   private readonly BEAT = 60 / this.BPM;
 
-  // Chords: [Root, [voicing], 5th]
-  private readonly CHORDS: [number, number[], number][] = [
-    [48, [51, 55, 58, 62], 7],  // Cmin7
-    [53, [57, 60, 63, 67], 7],  // Fmin7
-    [46, [62, 65, 69, 72], 7],  // Bb7
-    [51, [55, 58, 62, 65], 7],  // Ebmaj7
-    [57, [57, 60, 63, 67], 6],  // Abmaj7
-    [50, [54, 57, 60, 63], 7],  // Dm7b5
-    [55, [58, 62, 65, 69], 7],  // G7
-    [55, [59, 62, 65, 68], 7],  // G7alt
+    private readonly CHORDS: [number, number[], number][] = [
+    [48, [51, 55, 58, 62], 7],
+    [53, [57, 60, 63, 67], 7],
+    [46, [62, 65, 69, 72], 7],
+    [51, [55, 58, 62, 65], 7],
+    [57, [57, 60, 63, 67], 6],
+    [50, [54, 57, 60, 63], 7],
+    [55, [58, 62, 65, 69], 7],
+    [55, [59, 62, 65, 68], 7],
   ];
 
-  // Lead melody notes: [step, midi, lengthInBeats]
-  private readonly MELODY: [number, number, number][] = [
+    private readonly MELODY: [number, number, number][] = [
     [0, 67, 3], [3, 70, 1], [4, 72, 2], [6, 70, 2],
     [8, 69, 3], [11, 67, 1], [12, 65, 4],
     [16, 74, 3], [19, 72, 1], [20, 70, 2], [22, 69, 2], [24, 67, 4],
@@ -65,8 +58,7 @@ export class SoundManager {
     }
     SoundManager.instance = this;
 
-    // Start music on first user click anywhere in the window
-    if (!SoundManager.autoInitRegistered) {
+        if (!SoundManager.autoInitRegistered) {
       SoundManager.autoInitRegistered = true;
       const autoInit = () => {
         this.initContext();
@@ -89,31 +81,26 @@ export class SoundManager {
 
       const n = this.ctx.sampleRate;
 
-      // 1. Synthesize 2 seconds of pink/white tape noise buffer
-      this.noiseBuffer = this.ctx.createBuffer(1, n * 2, n);
+            this.noiseBuffer = this.ctx.createBuffer(1, n * 2, n);
       const nd = this.noiseBuffer.getChannelData(0);
       for (let i = 0; i < nd.length; i++) {
         nd[i] = Math.random() * 2 - 1;
       }
 
-      // 2. Master dynamics compressor to keep audio warm, fat, and unclipped
-      const comp = this.ctx.createDynamicsCompressor();
+            const comp = this.ctx.createDynamicsCompressor();
       comp.threshold.value = -16;
       comp.ratio.value = 3;
       comp.connect(this.ctx.destination);
 
-      // 3. Master SFX bus
-      this.masterBus = this.ctx.createGain();
+            this.masterBus = this.ctx.createGain();
       this.masterBus.gain.value = this.soundEnabled ? this.soundVolume : 0;
       this.masterBus.connect(comp);
 
-      // 4. Music bus with separate gain control
-      this.musicBus = this.ctx.createGain();
+            this.musicBus = this.ctx.createGain();
       this.musicBus.gain.value = this.musicEnabled ? this.musicVolume : 0;
       this.musicBus.connect(comp);
 
-      // 5. Convolution Hall Reverb for lush spatial room reflection
-      const ir = this.ctx.createBuffer(2, Math.floor(n * 1.3), n);
+            const ir = this.ctx.createBuffer(2, Math.floor(n * 1.3), n);
       for (let c = 0; c < 2; c++) {
         const d = ir.getChannelData(c);
         let lp = 0;
@@ -129,8 +116,7 @@ export class SoundManager {
       this.reverbNode.connect(reverbGain);
       reverbGain.connect(this.masterBus);
 
-      // 6. LFO Vibrato for wobble synth lead
-      const lfo = this.ctx.createOscillator();
+            const lfo = this.ctx.createOscillator();
       lfo.frequency.value = 0.37;
       this.lfoGain = this.ctx.createGain();
       this.lfoGain.gain.value = 13;
@@ -184,8 +170,7 @@ export class SoundManager {
     return this.setMusicEnabled(!this.musicEnabled);
   }
 
-  // --- PROCEDURAL CAÇAPA JAZZ ENGINE ---
-  private midiToFreq(note: number): number {
+    private midiToFreq(note: number): number {
     return 440 * Math.pow(2, (note - 69) / 12);
   }
 
@@ -197,7 +182,7 @@ export class SoundManager {
     if (!this.musicEnabled) return;
     const ctx = this.initContext();
     if (!ctx) return;
-    if (this.musicIntervalId) return; // Already running, never duplicate!
+    if (this.musicIntervalId) return;
 
     if (this.musicBus) {
       try {
@@ -257,8 +242,7 @@ export class SoundManager {
     const [root, chordNotes, fifth] = this.CHORDS[bar];
     const nextRoot = this.CHORDS[(bar + 1) % 8][0];
 
-    // 1. Walking Bass (soft acoustic triangle wave)
-    if (!(q & 1)) {
+        if (!(q & 1)) {
       const bassNote = q === 2 ? root + fifth : q === 6 ? (nextRoot > root ? nextRoot - 1 : nextRoot + 1) : root;
       this.playSynthTone(this.midiToFreq(bassNote), this.BEAT * 0.9, 0.08, {
         dl,
@@ -268,8 +252,7 @@ export class SoundManager {
       });
     }
 
-    // 2. Rhodes / Electric Piano Chords (calm warm swell)
-    if (q === 0 || q === 3) {
+        if (q === 0 || q === 3) {
       for (const n of chordNotes) {
         this.playSynthTone(this.midiToFreq(n), q ? this.BEAT * 0.8 : this.BEAT * 1.9, 0.014, {
           dl,
@@ -281,8 +264,7 @@ export class SoundManager {
       }
     }
 
-    // Sustained ambient chord pad
-    if (q === 0) {
+        if (q === 0) {
       for (const n of chordNotes) {
         this.playSynthTone(this.midiToFreq(n), this.BEAT * 7.5, 0.008, {
           dl,
@@ -293,24 +275,21 @@ export class SoundManager {
       }
     }
 
-    // 3. Kick & Snare brushes
-    if (q === 0 || q === 5) {
+        if (q === 0 || q === 5) {
       this.playSynthTone(125, 0.22, 0.09, { dl, bus: this.musicBus, attack: 0.002, glide: 0.36 });
     }
     if (q === 2 || q === 6) {
       this.playSynthNoise(0.14, 0.04, 1900, 0.8, { dl, bus: this.musicBus, attack: 0.002, reverb: 0.25 });
     }
 
-    // 4. Soft lo-fi closed hi-hat
-    this.playSynthNoise(0.03, q & 1 ? 0.016 : 0.009, 7500, 1.2, {
+        this.playSynthNoise(0.03, q & 1 ? 0.016 : 0.009, 7500, 1.2, {
       dl,
       bus: this.musicBus,
       attack: 0.001,
       type: 'highpass',
     });
 
-    // 5. Wobble Synth Lead
-    if ((s >> 6) % 2 === 0 || bar >= 4) {
+        if ((s >> 6) % 2 === 0 || bar >= 4) {
       for (const e of this.MELODY) {
         if (e[0] === p) {
           const d = e[2] * this.BEAT * 0.5 + 0.2;
@@ -332,8 +311,7 @@ export class SoundManager {
     }
   }
 
-  // --- SOUND EFFECTS (ASMR BALLS, CLACKS, REVERB) ---
-  private playSynthTone(
+    private playSynthTone(
     freq: number,
     dur: number,
     vol: number,
@@ -462,8 +440,7 @@ export class SoundManager {
     src.stop(t + dur + 0.05);
   }
 
-  // --- GAMEPLAY SOUNDS ---
-  playCueHit(power: number = 0.5): void {
+    playCueHit(power: number = 0.5): void {
     if (!this.soundEnabled) return;
     this.playSynthTone(900, 0.05, 0.09, { attack: 0.002, glide: 0.7 });
     this.playSynthNoise(0.04, 0.1 + 0.1 * power, 2200, 1.0, { attack: 0.001 });
@@ -492,13 +469,11 @@ export class SoundManager {
 
   playPocket(comboCount: number = 1): void {
     if (!this.soundEnabled) return;
-    // ASMR pocket drop
-    this.playSynthNoise(0.3, 0.2, 480, 0.7, { attack: 0.012, type: 'lowpass', glide: 0.45, reverb: 0.25 });
+        this.playSynthNoise(0.3, 0.2, 480, 0.7, { attack: 0.012, type: 'lowpass', glide: 0.45, reverb: 0.25 });
     this.playSynthTone(170, 0.25, 0.22, { attack: 0.008, glide: 0.55, reverb: 0.2 });
     this.playSynthNoise(0.55, 0.09, 260, 0.6, { attack: 0.1, type: 'lowpass', glide: 0.5, dl: 0.05 });
 
-    // Harmonic musical chime ascending with combo scale
-    const rawCount = Number.isFinite(comboCount) ? comboCount : 1;
+        const rawCount = Number.isFinite(comboCount) ? comboCount : 1;
     const count = Math.max(1, Math.floor(rawCount));
     const scale = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21];
     const semitone = scale[Math.min(count - 1, scale.length - 1)] ?? 0;

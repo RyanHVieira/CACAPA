@@ -26,8 +26,7 @@ import {
 } from './TarotCards';
 
 export class CardCatalog {
-  // Joker constructors pool
-  private static jokerConstructors = [
+    private static jokerConstructors = [
     BlueChalkJoker,
     GroselhaJoker,
     BilliardJoker,
@@ -44,8 +43,7 @@ export class CardCatalog {
     GoldDiggerJoker,
   ];
 
-  // Tarot constructors pool
-  private static tarotConstructors = [
+    private static tarotConstructors = [
     EmpressTarot,
     MagicianTarot,
     ChariotTarot,
@@ -79,8 +77,7 @@ export class CardCatalog {
   static generateShopOffers(count: number = 3): Card[] {
     const offers: Card[] = [];
     for (let i = 0; i < count; i++) {
-      // 75% chance Joker, 25% chance Tarot
-      if (Math.random() < 0.75) {
+            if (Math.random() < 0.75) {
         offers.push(this.createRandomJoker());
       } else {
         offers.push(this.createRandomTarot());

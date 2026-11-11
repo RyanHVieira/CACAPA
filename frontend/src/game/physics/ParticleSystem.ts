@@ -1,5 +1,3 @@
-// Particle & Juice Effects System (1:1 with prototype CAÇAPA)
-// Handles screen shake, hit-stop freeze frames, spark particles, and floating score pops
 
 export interface SparkParticle {
   x: number;
@@ -28,7 +26,7 @@ export interface FlyingScorePill {
   targetX: number;
   targetY: number;
   controlY: number;
-  t: number; // 0 to 1
+  t: number;
   speed: number;
   text: string;
   color: string;
@@ -41,15 +39,13 @@ export class ParticleSystem {
   public flyingPills: FlyingScorePill[] = [];
   public shake: number = 0;
   public freezeFrames: number = 0;
-  public screenFlash: number = 0; // 0 to 1
+  public screenFlash: number = 0;
 
-  // Flash screen with bright warm glow on big combos
-  triggerFlash(intensity: number = 0.5): void {
+    triggerFlash(intensity: number = 0.5): void {
     this.screenFlash = Math.max(this.screenFlash, intensity);
   }
 
-  // Spawn flying score pill that travels from pocket to left HUD
-  spawnFlyingPill(
+    spawnFlyingPill(
     startX: number,
     startY: number,
     text: string,
@@ -70,8 +66,7 @@ export class ParticleSystem {
     });
   }
 
-  // Add spark burst at impact or pocket point
-  spark(x: number, y: number, count: number = 16, color: string = '#ffd36a'): void {
+    spark(x: number, y: number, count: number = 16, color: string = '#ffd36a'): void {
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 1.5 + Math.random() * 4.5;
@@ -88,8 +83,7 @@ export class ParticleSystem {
     }
   }
 
-  // Add floating text popup (e.g. +60, ×1.5, FALTA!)
-  pop(x: number, y: number, text: string, color: string = '#f2b632', scale: number = 1.0): void {
+    pop(x: number, y: number, text: string, color: string = '#f2b632', scale: number = 1.0): void {
     this.popups.push({
       x,
       y,
@@ -101,45 +95,38 @@ export class ParticleSystem {
     });
   }
 
-  // Trigger screen shake with decay
-  addShake(amount: number): void {
+    addShake(amount: number): void {
     this.shake = Math.min(1.5, Math.max(this.shake, amount));
   }
 
-  // Freeze frames / hit-stop for visceral impact feel
-  triggerFreeze(frames: number = 3): void {
+    triggerFreeze(frames: number = 3): void {
     this.freezeFrames = Math.max(this.freezeFrames, frames);
   }
 
   update(): void {
-    // Decay shake
-    if (this.shake > 0) {
+        if (this.shake > 0) {
       this.shake = Math.max(0, this.shake - 0.035);
     }
 
-    // Freeze frames pause physics
-    if (this.freezeFrames > 0) {
+        if (this.freezeFrames > 0) {
       this.freezeFrames--;
       return;
     }
 
-    // Update spark particles
-    for (const p of this.particles) {
+        for (const p of this.particles) {
       p.x += p.vx;
       p.y += p.vy;
-      p.vy += 0.18; // gravity
+      p.vy += 0.18;
       p.life--;
     }
     this.particles = this.particles.filter((p) => p.life > 0);
 
-    // Update floating popups
-    for (const p of this.popups) {
+        for (const p of this.popups) {
       p.t++;
     }
     this.popups = this.popups.filter((p) => p.t < p.maxT);
 
-    // Update flying score pills travelling from pocket to left HUD
-    for (const pill of this.flyingPills) {
+        for (const pill of this.flyingPills) {
       pill.t += pill.speed;
       if (pill.t >= 1) {
         if (pill.onArrive) pill.onArrive();
@@ -148,10 +135,8 @@ export class ParticleSystem {
     this.flyingPills = this.flyingPills.filter((pill) => pill.t < 1);
   }
 
-  // Draw all active sparks, flying pills and popups to canvas
-  draw(ctx: CanvasRenderingContext2D): void {
-    // 0. Screen Flash on big combos
-    if (this.screenFlash > 0) {
+    draw(ctx: CanvasRenderingContext2D): void {
+        if (this.screenFlash > 0) {
       ctx.save();
       ctx.fillStyle = `rgba(255, 240, 200, ${this.screenFlash * 0.45})`;
       ctx.fillRect(0, 0, 1040, 560);
@@ -159,8 +144,7 @@ export class ParticleSystem {
       this.screenFlash = Math.max(0, this.screenFlash - 0.045);
     }
 
-    // 1. Draw Sparks
-    for (const p of this.particles) {
+        for (const p of this.particles) {
       const alpha = Math.max(0, Math.min(1, p.life / 20));
       ctx.save();
       ctx.globalAlpha = alpha;
@@ -169,24 +153,20 @@ export class ParticleSystem {
       ctx.restore();
     }
 
-    // 2. Draw Flying Score Pills (Authentic Caçapa +N Flying from Pocket to HUD)
-    for (const pill of this.flyingPills) {
+        for (const pill of this.flyingPills) {
       const u = pill.t;
-      // Quadratic Bezier interpolation with upward control arc
-      const curX = (1 - u) * (1 - u) * pill.startX + 2 * (1 - u) * u * ((pill.startX + pill.targetX) / 2) + u * u * pill.targetX;
+            const curX = (1 - u) * (1 - u) * pill.startX + 2 * (1 - u) * u * ((pill.startX + pill.targetX) / 2) + u * u * pill.targetX;
       const curY = (1 - u) * (1 - u) * pill.startY + 2 * (1 - u) * u * pill.controlY + u * u * pill.targetY;
 
       ctx.save();
       ctx.translate(curX, curY);
 
-      // Pill Shadow
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
       ctx.beginPath();
       ctx.roundRect(-26, -10, 56, 24, 12);
       ctx.fill();
 
-      // Pill Background & Stroke
-      ctx.fillStyle = '#1b1226';
+            ctx.fillStyle = '#1b1226';
       ctx.strokeStyle = pill.color;
       ctx.lineWidth = 2.5;
       ctx.beginPath();
@@ -194,8 +174,7 @@ export class ParticleSystem {
       ctx.fill();
       ctx.stroke();
 
-      // Pill Text
-      ctx.font = 'bold 13px Oswald, Impact, sans-serif';
+            ctx.font = 'bold 13px Oswald, Impact, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = '#ffffff';
@@ -204,8 +183,7 @@ export class ParticleSystem {
       ctx.restore();
     }
 
-    // 3. Draw Floating Score Popups with wobble and bounce
-    for (const p of this.popups) {
+        for (const p of this.popups) {
       const t = p.t;
       const alpha = t > 55 ? Math.max(0, (75 - t) / 20) : 1.0;
       const yOffset = t * 0.75;
@@ -222,22 +200,19 @@ export class ParticleSystem {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // Dark outline for punchy arcade text
-      ctx.lineJoin = 'round';
+            ctx.lineJoin = 'round';
       ctx.lineWidth = 3.5;
       ctx.strokeStyle = '#0b0710';
       ctx.strokeText(p.text, 0, 0);
 
-      // Glow fill
-      ctx.fillStyle = p.color;
+            ctx.fillStyle = p.color;
       ctx.fillText(p.text, 0, 0);
 
       ctx.restore();
     }
   }
 
-  // Get current shake transform offset
-  getShakeOffset(): { x: number; y: number } {
+    getShakeOffset(): { x: number; y: number } {
     if (this.shake <= 0) return { x: 0, y: 0 };
     const intensity = this.shake * this.shake * 8;
     return {

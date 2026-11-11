@@ -6,6 +6,7 @@ import { ScoreManager } from '../scoring/ScoreManager';
 import { ShopManager } from '../shop/ShopManager';
 import { SoundManager } from '../audio/SoundManager';
 import { ParticleSystem } from '../physics/ParticleSystem';
+import { BallEnhancementCatalog } from '../enhancements/BallEnhancement';
 import {
   TG,
   NM,
@@ -20,6 +21,20 @@ import {
   type TableBossRule,
 } from '../config/gameConfig';
 
+export interface DeckBallItem {
+  id: string;
+  number: number;
+  isStripe: boolean;
+  enhancement: {
+    id: string;
+    name: string;
+    color: string;
+    icon: string;
+    description: string;
+    rarity?: string;
+  } | null;
+}
+
 export type GameState =
   | 'AIMING'
   | 'SIMULATING'
@@ -31,8 +46,7 @@ export type GameState =
   | 'VICTORY';
 
 export class CacapaPoolEngine {
-  // Table & Models
-  public table: Table;
+    public table: Table;
   public balls: Ball[] = [];
   public physics: PhysicsEngine;
   public scoreManager: ScoreManager;
@@ -40,61 +54,62 @@ export class CacapaPoolEngine {
   public sound: SoundManager;
   public particleSystem: ParticleSystem;
 
-  // Flow & State
-  public state: GameState = 'AIMING';
+  private _state: GameState = 'AIMING';
+  public get state(): GameState {
+    return this._state;
+  }
+  public set state(newState: GameState) {
+    if (this._state !== newState) {
+      this._state = newState;
+      this.onStateChange?.(newState);
+    }
+  }
   public activeShotScore: { finalChips: number; finalMult: number } | null = null;
   public lastEarnedCash: number = 0;
   public notificationMessage: string = '';
 
-  // 10 Tables progression (0 to 9 in code, 1 to 10 on screen)
-  public tableIndex: number = 0;
+    public tableIndex: number = 0;
   public targetScore: number = TG[0];
   public currentScore: number = 0;
 
-  // Stats matching prototype B
-  public shotsRemaining: number = BASE_SHOTS;
+    public shotsRemaining: number = BASE_SHOTS;
   public shotsTaken: number = 0;
-  public foulCount: number = 0; // Persistent across the run (MAXF = 5)
+  public foulCount: number = 0;
   public money: number = START_MONEY;
   public ownedJokers: Card[] = [];
   public ownedConsumables: Card[] = [];
   public ballDeck: Map<
     number,
-    { id: string; name: string; color: string; icon: string; description: string } | null
+    { id: string; name: string; color: string; icon: string; description: string; rarity?: string } | null
   > = new Map();
-  public ballMods: Record<number, string> = {}; // { [ballNumber]: modId }
+  public deck: DeckBallItem[] = [];
+  public ballMods: Record<number, string> = {};
   public cueId: string | null = null;
 
-  // Stripes randomization per run (STR in B)
-  public STR: boolean[] = Array(16).fill(false);
+    public STR: boolean[] = Array(16).fill(false);
 
-  // Par ou Ímpar random state (PAR in B)
-  public PAR: { p: number; e: number } = { p: 0, e: 0 };
+    public PAR: { p: number; e: number } = { p: 0, e: 0 };
 
-  // Shot tracking
-  public currentShotPots: number = 0;
+    public currentShotPots: number = 0;
   public currentShotChips: number = 0;
   public currentShotMult: number = 1;
   public scratchInShot: boolean = false;
 
-  // Caçapa HUD stats
-  public lastHandName: string = 'CAÇAPAS 0';
+    public lastHandName: string = 'CAÇAPAS 0';
   public lastChips: number = 0;
   public lastMult: number = 1;
   public lastCaçapasCount: number = 0;
   public isMetaAchieved: boolean = false;
   public reracksRemaining: number = 2;
 
-  // Aiming stats
-  public cueBall: Ball | null = null;
+    public cueBall: Ball | null = null;
   public aimAngle: number = 0;
   public aimPower: number = 0;
 
-  // Shot scored callback for UI animations
-  public onShotScored?: (score: unknown) => void;
+    public onShotScored?: (score: unknown) => void;
+    public onStateChange?: (state: GameState) => void;
 
-  // Compatibility getters for existing UI
-  get ante(): number {
+    get ante(): number {
     return this.tableIndex + 1;
   }
   set ante(val: number) {
@@ -102,8 +117,7 @@ export class CacapaPoolEngine {
   }
 
   get roundInAnte(): number {
-    // 3rd round of each boss bracket
-    return BOSS.includes(this.tableIndex) ? 3 : 1;
+        return BOSS.includes(this.tableIndex) ? 3 : 1;
   }
 
   get blindType(): string {
@@ -134,8 +148,7 @@ export class CacapaPoolEngine {
     this.particleSystem = new ParticleSystem();
     this.physics.particles = this.particleSystem;
 
-    // Physics sound & particle hooks
-    this.physics.onBallHit = (speed) => this.sound.playBallHit(speed);
+        this.physics.onBallHit = (speed) => this.sound.playBallHit(speed);
     this.physics.onCushionHit = (speed) => this.sound.playCushionBounce(speed);
     this.physics.onPocketBall = (ball, pocket) => this.handleBallPocketed(ball, pocket);
 
@@ -158,11 +171,7 @@ export class CacapaPoolEngine {
     return this.scoreManager.countJoker(this.ownedJokers, id);
   }
 
-  /**
-   * Sorteia lisas e listradas para a run (rollStripes de B)
-   * A bola 8 é sempre lisa; entre as bolas 1-7 e 9, de 2 a 6 são listradas.
-   */
-  public rollStripes(): void {
+    public rollStripes(): void {
     let s: boolean[];
     let c9: number;
     do {
@@ -177,17 +186,33 @@ export class CacapaPoolEngine {
     this.STR = s;
   }
 
-  /**
-   * Sorteia Par ou Ímpar a cada tacada (parRoll de B)
-   */
-  public parRoll(): void {
+    public parRoll(): void {
     this.PAR.p = Math.random() < 0.5 ? 1 : 0;
     this.PAR.e = Math.floor(Math.random() * PE.length);
   }
 
-  /**
-   * Inicia uma nova Run (begin de B)
-   */
+    public initDeck(): void {
+    this.deck = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((num, i) => ({
+      id: `deck-${i + 1}-${Math.random().toString(36).slice(2, 7)}`,
+      number: num,
+      isStripe: !!this.STR[num] || num >= 9,
+      enhancement: null,
+    }));
+    this.syncDeckToEngine();
+  }
+
+  public syncDeckToEngine(): void {
+    this.ballDeck.clear();
+    this.ballMods = {};
+    this.deck.forEach((ball) => {
+      if (ball.enhancement) {
+        this.ballDeck.set(ball.number, ball.enhancement);
+        this.ballMods[ball.number] = ball.enhancement.id;
+      }
+      this.STR[ball.number] = ball.isStripe;
+    });
+  }
+
   public startNewGame(): void {
     this.tableIndex = 0;
     this.money = START_MONEY;
@@ -197,13 +222,11 @@ export class CacapaPoolEngine {
     this.ballMods = {};
     this.cueId = null;
     this.rollStripes();
+    this.initDeck();
     this.setupTable();
   }
 
-  /**
-   * Configura a mesa atual (start de B)
-   */
-  public setupTable(): void {
+    public setupTable(): void {
     this.targetScore = TG[this.tableIndex];
     this.currentScore = 0;
     this.shotsRemaining = this.maxShots;
@@ -216,30 +239,24 @@ export class CacapaPoolEngine {
     this.reracksRemaining = 2;
     this.notificationMessage = `Mesa ${this.tableIndex + 1}: ${NM[this.tableIndex]} — Meta: ${this.targetScore} pts`;
 
-    // Unlock any locked jokers from previous boss
-    this.ownedJokers.forEach((j) => {
+        this.ownedJokers.forEach((j) => {
       (j as { isLocked?: boolean }).isLocked = false;
     });
 
-    // Boss rule 1: Chefão Exigente (Table 4, index 3) locks 1st joker
-    if (this.tableIndex === 3 && this.ownedJokers.length > 0) {
+        if (this.tableIndex === 3 && this.ownedJokers.length > 0) {
       (this.ownedJokers[0] as { isLocked?: boolean }).isLocked = true;
     }
 
     this.rackBalls();
 
-    // Boss rule 2: Chefão Exigente removes 3 balls from rack
-    if (this.tableIndex === 3) {
+        if (this.tableIndex === 3) {
       this.missBalls(3);
     }
 
     this.state = 'AIMING';
   }
 
-  /**
-   * Remove N bolas do rack no início da mesa do chefão
-   */
-  private missBalls(count: number): void {
+    private missBalls(count: number): void {
     const objectBalls = this.balls.filter((b) => !b.isCue && !b.isPocketed);
     const toRemove = objectBalls.sort(() => Math.random() - 0.5).slice(0, count);
     for (const b of toRemove) {
@@ -249,29 +266,30 @@ export class CacapaPoolEngine {
     }
   }
 
-  /**
-   * Arruma o rack de bolas conforme a mesa atual (rack de B)
-   */
-  public rackBalls(): void {
+    public rackBalls(): void {
     this.balls = [];
     const r = 16.5;
 
-    // Baulk position (left quarter)
     const baulkX = this.table.minX + (this.table.maxX - this.table.minX) * 0.25;
     const centerY = this.table.height / 2;
     this.cueBall = new Ball(0, 0, baulkX, centerY, r);
     this.balls.push(this.cueBall);
 
-    // Number of balls and rack shape
     const N = nBalls(this.tableIndex);
     const shape = RK[N] || RK[9];
 
-    // Numbers pool: 1 at apex, 9 in center, others shuffled
-    const pool = [2, 3, 4, 5, 6, 7, 8, ...Array.from({ length: N - 9 }, (_, i) => 10 + i)].sort(
-      () => Math.random() - 0.5
-    );
-    const ord = [1, pool[0], pool[1], pool[2], 9, ...pool.slice(3)];
+    while (this.deck.length < N) {
+      const nextNum = Math.min(12, this.deck.length + 1);
+      this.deck.push({
+        id: `deck-${this.deck.length + 1}-${Math.random().toString(36).slice(2, 7)}`,
+        number: nextNum,
+        isStripe: true,
+        enhancement: null,
+      });
+    }
+    this.syncDeckToEngine();
 
+    const activeDeck = this.deck.slice(0, N);
     const rackStartX = this.table.minX + (this.table.maxX - this.table.minX) * 0.72;
     const rowSpacing = r * 1.95;
     const colSpacing = r * 1.86;
@@ -279,12 +297,15 @@ export class CacapaPoolEngine {
     let k = 0;
     shape.forEach((countInCol, colIdx) => {
       for (let i = 0; i < countInCol; i++) {
-        if (k >= ord.length) break;
-        const num = ord[k++];
+        if (k >= activeDeck.length) break;
+        const deckItem = activeDeck[k++];
         const x = rackStartX + colIdx * colSpacing;
         const y = centerY + (i - (countInCol - 1) / 2) * rowSpacing;
-        const ball = new Ball(num, num, x, y, r);
-        ball.isStriped = !!this.STR[num];
+        const ball = new Ball(deckItem.number, deckItem.number, x, y, r);
+        ball.isStriped = deckItem.isStripe;
+        if (deckItem.enhancement) {
+          ball.enhancement = BallEnhancementCatalog.getById(deckItem.enhancement.id);
+        }
         this.balls.push(ball);
       }
     });
@@ -299,10 +320,7 @@ export class CacapaPoolEngine {
     return true;
   }
 
-  /**
-   * Executa a tacada (fire de B)
-   */
-  public shoot(angle: number, power: number): boolean {
+    public shoot(angle: number, power: number): boolean {
     if (this.state !== 'AIMING' || !this.cueBall || this.shotsRemaining <= 0) {
       return false;
     }
@@ -317,17 +335,14 @@ export class CacapaPoolEngine {
     this.shotsTaken++;
     this.state = 'SIMULATING';
 
-    // Reset per-shot running counters
-    this.currentShotPots = 0;
+        this.currentShotPots = 0;
     this.currentShotChips = 0;
     this.currentShotMult = 1;
     this.scratchInShot = false;
 
-    // Roll Par ou Ímpar
-    this.parRoll();
+        this.parRoll();
 
-    // Necronomicon: 1 random ball becomes possessed
-    const necCount = this.countJoker('nec');
+        const necCount = this.countJoker('nec');
     if (necCount > 0) {
       const liveBalls = this.balls.filter((b) => !b.isCue && !b.isPocketed).sort(() => Math.random() - 0.5);
       liveBalls.slice(0, necCount).forEach((b) => {
@@ -336,8 +351,7 @@ export class CacapaPoolEngine {
       });
     }
 
-    // Boss rule Table 7: Shark eats 1 ball (50% chance, leaving >= 2)
-    if (this.tableIndex === 6) {
+        if (this.tableIndex === 6) {
       const liveBalls = this.balls.filter((b) => !b.isCue && !b.isPocketed);
       if (liveBalls.length > 2 && Math.random() < 0.5) {
         const victim = liveBalls[Math.floor(Math.random() * liveBalls.length)];
@@ -348,8 +362,7 @@ export class CacapaPoolEngine {
       }
     }
 
-    // Boss rule Table 10: Nudge balls slightly
-    if (this.tableIndex === 9) {
+        if (this.tableIndex === 9) {
       for (const b of this.balls) {
         if (!b.isCue && !b.isPocketed) {
           const a = Math.random() * Math.PI * 2;
@@ -367,10 +380,7 @@ export class CacapaPoolEngine {
     return true;
   }
 
-  /**
-   * Chamado quando uma bola cai na caçapa durante a física (pot de B)
-   */
-  private handleBallPocketed(ball: Ball, pocket: Pocket): void {
+    private handleBallPocketed(ball: Ball, pocket: Pocket): void {
     if (ball.isCue) {
       this.scratchInShot = true;
       this.foulCount++;
@@ -383,19 +393,13 @@ export class CacapaPoolEngine {
         '#ff4b3a',
         1.3
       );
-
-      if (this.foulCount >= MAXF) {
-        this.sound.playLose();
-        this.state = 'GAME_OVER';
-      }
       return;
     }
 
     this.currentShotPots++;
     const activeRemaining = this.balls.filter((b) => !b.isCue && !b.isPocketed).length;
 
-    // Evaluate pot using exact formulas from B
-    const potRes = this.scoreManager.evaluatePot({
+        const potRes = this.scoreManager.evaluatePot({
       potIndex: this.currentShotPots,
       ball,
       pocket,
@@ -424,8 +428,7 @@ export class CacapaPoolEngine {
     this.lastMult = Math.round(this.currentShotMult * 10) / 10;
     this.lastCaçapasCount = this.currentShotPots;
 
-    // Particles and audio
-    this.sound.playPocket(this.currentShotPots);
+        this.sound.playPocket(this.currentShotPots);
     this.particleSystem.triggerFreeze(3);
     this.particleSystem.spark(pocket.x, pocket.y, 22, ball.color);
     this.particleSystem.spawnFlyingPill(
@@ -450,8 +453,7 @@ export class CacapaPoolEngine {
       const speedMultiplier = 1.35;
       this.physics.update(dt * speedMultiplier);
 
-      // Suction in Table 10 (Vórtices do Destino): pull cue ball towards pockets
-      if (this.tableIndex === 9 && this.cueBall && !this.cueBall.isPocketed) {
+            if (this.tableIndex === 9 && this.cueBall && !this.cueBall.isPocketed) {
         for (const p of this.table.pockets) {
           const dx = p.x - this.cueBall.pos.x;
           const dy = p.y - this.cueBall.pos.y;
@@ -470,18 +472,29 @@ export class CacapaPoolEngine {
     }
   }
 
-  /**
-   * Finalização da tacada (endShot e after de B)
-   */
   private onShotStopped(): void {
+    if (this.scratchInShot && this.cueBall) {
+      const baulkX = this.table.minX + (this.table.maxX - this.table.minX) * 0.25;
+      const centerY = this.table.height / 2;
+      this.cueBall.resetPosition(baulkX, centerY);
+      this.cueBall.isPocketed = false;
+    }
+
     if (this.scratchInShot && this.foulCount >= MAXF) {
       this.state = 'GAME_OVER';
       this.sound.playLose();
+      this.particleSystem.pop(
+        this.table.width / 2,
+        this.table.height / 2 - 30,
+        'LIMITE DE FALTAS! FIM DE JOGO',
+        '#ff4b3a',
+        2.0
+      );
+      this.onShotScored?.(null);
       return;
     }
 
-    // Evaluate end of shot multipliers from B
-    const endResult = this.scoreManager.evaluateEndShot({
+        const endResult = this.scoreManager.evaluateEndShot({
       chips: this.currentShotChips,
       mult: this.currentShotMult,
       pots: this.currentShotPots,
@@ -499,11 +512,9 @@ export class CacapaPoolEngine {
       finalMult: endResult.finalMult,
     };
 
-    // Trigger sequential UI animations
-    this.onShotScored?.(endResult);
+        this.onShotScored?.(endResult);
 
-    // Sounds & flash
-    if (endResult.totalScore > 0) {
+        if (endResult.totalScore > 0) {
       this.sound.playScoreImpact();
       this.particleSystem.spark(this.table.width / 2, this.table.height / 2, 24, '#f2b632');
       this.particleSystem.pop(
@@ -520,17 +531,14 @@ export class CacapaPoolEngine {
       }
     }
 
-    // Respawn cue ball if scratched
-    if (this.scratchInShot && this.cueBall) {
+        if (this.scratchInShot && this.cueBall) {
       const baulkX = this.table.minX + (this.table.maxX - this.table.minX) * 0.25;
       const centerY = this.table.height / 2;
       this.cueBall.resetPosition(baulkX, centerY);
       this.cueBall.isPocketed = false;
     }
 
-    // After Shot (after de B)
-    // 1. If table is completely cleared of object balls -> Faxina payout and fresh rack
-    const remainingBalls = this.balls.filter((b) => !b.isCue && !b.isPocketed);
+            const remainingBalls = this.balls.filter((b) => !b.isCue && !b.isPocketed);
     if (remainingBalls.length === 0) {
       const faxK = this.countJoker('fax');
       if (faxK > 0) {
@@ -547,8 +555,7 @@ export class CacapaPoolEngine {
       this.rackBalls();
     }
 
-    // 2. Check if Meta beaten -> Collect reward and open Shop
-    if (this.currentScore >= this.targetScore) {
+        if (this.currentScore >= this.targetScore) {
       this.isMetaAchieved = true;
       this.sound.playWin();
       this.particleSystem.spark(this.table.width / 2, this.table.height / 2, 40, '#7ad36a');
@@ -561,8 +568,7 @@ export class CacapaPoolEngine {
       );
       this.particleSystem.addShake(0.4);
 
-      // Payout: cash = 3 + shots + 5*bnk + (shots > 0 ? shots * 3 * cof : 0) + 12*bcc
-      const bnkK = this.countJoker('bnk');
+            const bnkK = this.countJoker('bnk');
       const cofK = this.countJoker('cof');
       const bccK = this.countJoker('bcc');
       const cash =
@@ -575,14 +581,12 @@ export class CacapaPoolEngine {
       this.money += cash;
       this.lastEarnedCash = cash;
 
-      // Victory of the whole run upon clearing Table 10 (index 9)
-      if (this.tableIndex >= TG.length - 1) {
+            if (this.tableIndex >= TG.length - 1) {
         this.state = 'VICTORY';
         return;
       }
 
-      // Generate shops
-      this.shopManager.generateStock(this.tableIndex, this.ownedJokers);
+            this.shopManager.generateStock(this.tableIndex, this.ownedJokers);
       if (this.shopManager.shouldOpenBallModShop(this.tableIndex)) {
         this.shopManager.generateBallModStock(this.ballMods);
       }
@@ -594,15 +598,13 @@ export class CacapaPoolEngine {
       return;
     }
 
-    // 3. Out of shots without reaching target -> Defeat
-    if (this.shotsRemaining <= 0) {
+        if (this.shotsRemaining <= 0) {
       this.sound.playLose();
       this.state = 'GAME_OVER';
       return;
     }
 
-    // Ready for next shot
-    this.state = 'AIMING';
+        this.state = 'AIMING';
   }
 
   public nextRound(): void {
@@ -671,8 +673,63 @@ export class CacapaPoolEngine {
     return res;
   }
 
-  // Compatibility method
+    public buyAndReplaceShopBall(shopOfferIndex: number, deckIndexToReplace: number): {
+    success: boolean;
+    message: string;
+    cost: number;
+  } {
+    if (shopOfferIndex < 0 || shopOfferIndex >= this.shopManager.ballModStock.length) {
+      return { success: false, message: 'Oferta inválida.', cost: 0 };
+    }
+    const offer = this.shopManager.ballModStock[shopOfferIndex];
+    if (!offer) {
+      return { success: false, message: 'Item já comprado!', cost: 0 };
+    }
+    if (this.money < offer.cost) {
+      return { success: false, message: 'Dinheiro insuficiente!', cost: 0 };
+    }
+    if (deckIndexToReplace < 0 || deckIndexToReplace >= this.deck.length) {
+      return { success: false, message: 'Bola do deck selecionada é inválida.', cost: 0 };
+    }
+
+    const oldBall = this.deck[deckIndexToReplace];
+    this.money -= offer.cost;
+    this.sound.playBuy();
+
+    const newDeckBall: DeckBallItem = {
+      id: `deck-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      number: offer.ballNumber,
+      isStripe: offer.isStripe,
+      enhancement: offer.hasEnhancement
+        ? {
+            id: offer.id,
+            name: offer.name,
+            color: offer.color,
+            icon: offer.icon,
+            description: offer.description,
+            rarity: offer.rarity,
+          }
+        : null,
+    };
+
+    this.deck[deckIndexToReplace] = newDeckBall;
+    this.syncDeckToEngine();
+    this.shopManager.ballModStock[shopOfferIndex] = null;
+
+    const modInfo = offer.hasEnhancement ? `com ${offer.name} (${offer.rarity || 'Especial'})` : `(Normal)`;
+    return {
+      success: true,
+      cost: offer.cost,
+      message: `Bola #${offer.ballNumber} (${offer.isStripe ? 'Listrada' : 'Lisa'}) ${modInfo} substituiu a Bola #${oldBall.number}!`,
+    };
+  }
+
   public buyShopBall(index: number) {
+    if (this.deck.length > 0) {
+      const unenhancedIndex = this.deck.findIndex((b) => b.enhancement === null);
+      const targetIndex = unenhancedIndex >= 0 ? unenhancedIndex : 0;
+      return this.buyAndReplaceShopBall(index, targetIndex);
+    }
     return this.buyShopBallMod(index);
   }
 }

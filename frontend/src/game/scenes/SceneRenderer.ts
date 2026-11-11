@@ -1,4 +1,3 @@
-// Scene Renderer - Renders per-table themed backgrounds (1:1 prototype clone)
 
 import { SCENE_PALETTES, drawCircle, createRadialGradient } from './TableScenes';
 
@@ -37,8 +36,7 @@ export class SceneRenderer {
     this.shakeY = y;
   }
 
-  // Render the swirling background plasma (matching prototype swirl function)
-  private renderSwirl(): void {
+    private renderSwirl(): void {
     const palette = SCENE_PALETTES[this.tableIndex];
     const ctx = this.lowResCtx;
     const w = this.lowResWidth;
@@ -62,8 +60,7 @@ export class SceneRenderer {
           v += (0.6 / i) * Math.cos(i * u + t * 0.4 + 0.3 * i);
         }
 
-        // Apply table-specific palette
-        const k = Math.round((0.5 + 0.5 * Math.sin(u + v)) * 5) / 5;
+                const k = Math.round((0.5 + 0.5 * Math.sin(u + v)) * 5) / 5;
         const n = 0.5 + 0.5 * Math.sin(u - v * 1.3);
 
         const r = palette.dark[0] * (1 - k) + (palette.mid[0] * (1 - n) + palette.light[0] * n) * k;
@@ -81,8 +78,7 @@ export class SceneRenderer {
     ctx.putImageData(imgData, 0, 0);
   }
 
-  // Draw scene-specific decorations (matching prototype scene() function)
-  private renderSceneDecorations(ctx: CanvasRenderingContext2D): void {
+    private renderSceneDecorations(ctx: CanvasRenderingContext2D): void {
     const t = this.time;
     const Z = this.tableIndex;
     const pc = SCENE_PALETTES[Z].dark;
@@ -91,8 +87,7 @@ export class SceneRenderer {
     ctx.save();
     ctx.translate(this.shakeX, this.shakeY);
 
-    // Helper functions matching prototype
-    const bub = (co: string, n: number) => {
+        const bub = (co: string, n: number) => {
       ctx.strokeStyle = co;
       ctx.lineWidth = 1.5;
       for (let i = 0; i < n; i++) {
@@ -166,8 +161,7 @@ export class SceneRenderer {
       drawCircle(ctx, x, y, r, fill, stroke, lw);
     };
 
-    // Table-specific scenes (0-9 matching prototype)
-    if (Z === 0) { // Boteco do Zé
+        if (Z === 0) {
       bub('#ffd36a', 24);
       for (let k = 0; k < 19; k++) {
         const x = k * 52 + 14;
@@ -183,7 +177,7 @@ export class SceneRenderer {
         ci(x, y + 5, 3.5, co);
         ctx.shadowBlur = 0;
       });
-    } else if (Z === 1) { // Clube do Bairro
+    } else if (Z === 1) {
       wire(10, 22, (x, y, i) => {
         const colors = ['#f2c230', '#fff2c0', '#8dff9a', '#e86fb0'];
         ctx.fillStyle = colors[i % 4];
@@ -198,7 +192,7 @@ export class SceneRenderer {
         ctx.stroke();
       });
       dust('#fff', 34, 0.25);
-    } else if (Z === 2) { // Salão VIP
+    } else if (Z === 2) {
       ctx.fillStyle = '#8a1a34';
       ctx.fillRect(0, 0, W, 6);
       for (let k = 0; k < 12; k++) {
@@ -213,7 +207,7 @@ export class SceneRenderer {
         ci(x, 8, 3, '#f2c230');
       }
       dust('#ffe08a', 40, 0.15);
-    } else if (Z === 3) { // Mesa do Chefão
+    } else if (Z === 3) {
       for (let k = 0; k < 14; k++) {
         tri(k * 90 + ((t * 0.3) % 90), 40, 100, 'rgba(255,70,60,.09)');
       }
@@ -227,7 +221,7 @@ export class SceneRenderer {
           'rgba(190,190,200,.1)'
         );
       }
-    } else if (Z === 4) { // Sinuca da Praia
+    } else if (Z === 4) {
       const sg = createRadialGradient(ctx, 234, 76, 70, [
         [0, 'rgba(255,235,150,.9)'],
         [1, 'rgba(255,200,100,0)'],
@@ -286,7 +280,7 @@ export class SceneRenderer {
         ctx.stroke();
       }
       ctx.restore();
-    } else if (Z === 5) { // Cassino Neon
+    } else if (Z === 5) {
       const spotlights: [number, string, number][] = [
         [170, 'rgba(255,90,230,.14)', 0],
         [800, 'rgba(255,243,90,.12)', 2],
@@ -315,7 +309,7 @@ export class SceneRenderer {
       ctx.stroke();
       ctx.restore();
       dust('#fff35a', 30, 0.4);
-    } else if (Z === 6) { // Bar do Pescador
+    } else if (Z === 6) {
       for (let k = 0; k < 7; k++) {
         tri(
           k * 150 + Math.sin(t * 0.01 + k) * 30,
@@ -347,13 +341,13 @@ export class SceneRenderer {
         else ctx.moveTo(x, y);
       }
       ctx.stroke();
-    } else if (Z === 7) { // Cobertura 77
+    } else if (Z === 7) {
       sky('#ffd36a', 7);
       ci(234, 64, 19, '#f3eeff', OD, 2);
       ci(228, 58, 4, 'rgba(150,140,190,.5)');
       ci(240, 70, 3, 'rgba(150,140,190,.5)');
       dust('#fff', 40, 0.05);
-    } else if (Z === 8) { // Salão Imperial
+    } else if (Z === 8) {
       for (let k = 0; k < 9; k++) {
         const x = k * 120 + 10;
         ctx.beginPath();
@@ -371,7 +365,7 @@ export class SceneRenderer {
         ctx.stroke();
       }
       dust('#ffe08a', 36, 0.2);
-    } else { // Mesa do Destino (Z === 9)
+    } else {
       for (let i = 0; i < 26; i++) {
         const x = (i * 173.3) % W;
         const y = (i * 59.7) % 130;
@@ -402,22 +396,18 @@ export class SceneRenderer {
     ctx.restore();
   }
 
-  // Main render function
-  render(ctx: CanvasRenderingContext2D, targetW?: number, targetH?: number): void {
+    render(ctx: CanvasRenderingContext2D, targetW?: number, targetH?: number): void {
     const destW = targetW || ctx.canvas.width || W;
     const destH = targetH || ctx.canvas.height || H;
 
-    // 1. Render low-res swirling plasma
-    this.renderSwirl();
+        this.renderSwirl();
 
-    // 2. Draw the low-res plasma scaled up with pixel-art feel (matching prototype)
-    ctx.save();
+        ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(this.lowResCanvas, 0, 0, destW, destH);
     ctx.restore();
 
-    // 3. Render scene-specific decorations proportionally scaled to full screen
-    ctx.save();
+        ctx.save();
     const scaleX = destW / W;
     const scaleY = destH / H;
     ctx.scale(scaleX, scaleY);
@@ -426,7 +416,6 @@ export class SceneRenderer {
   }
 }
 
-// Export singleton factory
 export function createSceneRenderer(tableIndex: number = 0): SceneRenderer {
   return new SceneRenderer(tableIndex);
 }

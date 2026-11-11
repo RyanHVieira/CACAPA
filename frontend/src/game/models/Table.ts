@@ -19,32 +19,30 @@ export interface Cushion {
   normalY: number;
 }
 
-// Felt colors per table (matching prototype FEL array)
 export const FELT_COLORS = [
-  '#1f7a52', // Table 0: Boteco do Zé
-  '#1f6a44', // Table 1: Clube do Bairro
-  '#7a2a45', // Table 2: Salão VIP
-  '#2a2f3a', // Table 3: Mesa do Chefão
-  '#1f9aa8', // Table 4: Sinuca da Praia
-  '#5a2a8a', // Table 5: Cassino Neon
-  '#1f5f7a', // Table 6: Bar do Pescador
-  '#33378a', // Table 7: Cobertura 77
-  '#1f3a7a', // Table 8: Salão Imperial
-  '#4a2a7a', // Table 9: Mesa do Destino
+  '#1f7a52',
+  '#1f6a44',
+  '#7a2a45',
+  '#2a2f3a',
+  '#1f9aa8',
+  '#5a2a8a',
+  '#1f5f7a',
+  '#33378a',
+  '#1f3a7a',
+  '#4a2a7a',
 ];
 
-// Wood and pocket colors per table
 const POCKET_THEMES = [
-  ['#8a5a1a', '#d9a441', '#7a4a12'], // 0
-  ['#3a2a14', '#2f7a44', '#1d4a2a'], // 1
-  ['#6a4010', '#f2c230', '#a8741a'], // 2
-  ['#14141a', '#4a4a56', '#2a2a32'], // 3
-  ['#2a6a88', '#5fa8c4', '#2a6a88'], // 4
-  ['#4a0f5a', '#ff4bd8', '#8a1fa0'], // 5
-  ['#a8231a', '#ffffff', '#d6322a'], // 6
-  ['#2a2a3a', '#b9a4ff', '#5a4a9a'], // 7
-  ['#6a4010', '#ffd96a', '#d98410'], // 8
-  ['#1c0f3a', '#9b4dff', '#4a2a8a'], // 9
+  ['#8a5a1a', '#d9a441', '#7a4a12'],
+  ['#3a2a14', '#2f7a44', '#1d4a2a'],
+  ['#6a4010', '#f2c230', '#a8741a'],
+  ['#14141a', '#4a4a56', '#2a2a32'],
+  ['#2a6a88', '#5fa8c4', '#2a6a88'],
+  ['#4a0f5a', '#ff4bd8', '#8a1fa0'],
+  ['#a8231a', '#ffffff', '#d6322a'],
+  ['#2a2a3a', '#b9a4ff', '#5a4a9a'],
+  ['#6a4010', '#ffd96a', '#d98410'],
+  ['#1c0f3a', '#9b4dff', '#4a2a8a'],
 ];
 
 const OD = '#0b0710';
@@ -59,8 +57,7 @@ export class Table {
   public pockets: Pocket[] = [];
   public cushions: Cushion[] = [];
 
-  // Table bounds
-  public minX: number;
+    public minX: number;
   public maxX: number;
   public minY: number;
   public maxY: number;
@@ -94,13 +91,12 @@ export class Table {
   }
 
   private initCushions(): void {
-    const cut = 24; // bevel distance near pockets
+    const cut = 24;
     const sideCut = 26;
     const midX = this.width / 2;
 
     this.cushions = [
-      // Top Left
-      {
+            {
         x1: this.minX + cut,
         y1: this.minY,
         x2: midX - sideCut,
@@ -108,8 +104,7 @@ export class Table {
         normalX: 0,
         normalY: 1,
       },
-      // Top Right
-      {
+            {
         x1: midX + sideCut,
         y1: this.minY,
         x2: this.maxX - cut,
@@ -117,8 +112,7 @@ export class Table {
         normalX: 0,
         normalY: 1,
       },
-      // Bottom Left
-      {
+            {
         x1: this.minX + cut,
         y1: this.maxY,
         x2: midX - sideCut,
@@ -126,8 +120,7 @@ export class Table {
         normalX: 0,
         normalY: -1,
       },
-      // Bottom Right
-      {
+            {
         x1: midX + sideCut,
         y1: this.maxY,
         x2: this.maxX - cut,
@@ -135,8 +128,7 @@ export class Table {
         normalX: 0,
         normalY: -1,
       },
-      // Left
-      {
+            {
         x1: this.minX,
         y1: this.minY + cut,
         x2: this.minX,
@@ -144,8 +136,7 @@ export class Table {
         normalX: 1,
         normalY: 0,
       },
-      // Right
-      {
+            {
         x1: this.maxX,
         y1: this.minY + cut,
         x2: this.maxX,
@@ -181,16 +172,14 @@ export class Table {
     const feltBase = FELT_COLORS[tIdx];
     const th = POCKET_THEMES[tIdx];
 
-    // 1. Outer Dark Wooden Frame with dark border #0b0710 (matching prototype B)
-    ctx.fillStyle = '#231109';
+        ctx.fillStyle = '#231109';
     this.roundRect(ctx, 0, 0, this.width, this.height, frameRadius);
     ctx.fill();
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 5.5;
     ctx.strokeStyle = OD;
     ctx.stroke();
 
-    // Wood Grain / Warm Rich Gradient
-    const woodGrad = ctx.createLinearGradient(0, 0, this.width, this.height);
+        const woodGrad = ctx.createLinearGradient(0, 0, this.width, this.height);
     woodGrad.addColorStop(0, '#5a2912');
     woodGrad.addColorStop(0.3, '#78350f');
     woodGrad.addColorStop(0.7, '#8a3c10');
@@ -199,9 +188,8 @@ export class Table {
     this.roundRect(ctx, 4, 4, this.width - 8, this.height - 8, frameRadius - 2);
     ctx.fill();
 
-    // Inner Rail Cushion Bevel & Shadow
-    ctx.strokeStyle = OD;
-    ctx.lineWidth = 3;
+        ctx.strokeStyle = OD;
+    ctx.lineWidth = 4;
     this.roundRect(
       ctx,
       this.railSize - 3,
@@ -212,8 +200,7 @@ export class Table {
     );
     ctx.stroke();
 
-    // 2. Playfield Felt: Striped Tournament Cloth
-    const playWidth = this.maxX - this.minX;
+        const playWidth = this.maxX - this.minX;
     const playHeight = this.maxY - this.minY;
 
     ctx.save();
@@ -221,19 +208,16 @@ export class Table {
     ctx.rect(this.minX, this.minY, playWidth, playHeight);
     ctx.clip();
 
-    // Base Felt Color per Ante
-    ctx.fillStyle = feltBase;
+        ctx.fillStyle = feltBase;
     ctx.fillRect(this.minX, this.minY, playWidth, playHeight);
 
-    // Subtle wide vertical stripes (matching prototype B: 40px wide rgba(255,255,255,.045))
-    const stripeW = 40;
+        const stripeW = 40;
     for (let x = this.minX; x < this.maxX; x += stripeW * 2) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.045)';
       ctx.fillRect(x, this.minY, stripeW, playHeight);
     }
 
-    // Baulk line (head string at 25% of table width)
-    const baulkX = this.minX + playWidth * 0.25;
+        const baulkX = this.minX + playWidth * 0.25;
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -241,16 +225,14 @@ export class Table {
     ctx.lineTo(baulkX, this.maxY);
     ctx.stroke();
 
-    // Foot Spot for rack (white ring at 72%)
-    const footSpotX = this.minX + playWidth * 0.72;
+        const footSpotX = this.minX + playWidth * 0.72;
     ctx.beginPath();
     ctx.arc(footSpotX, this.height / 2, 4, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Atmospheric Lamp Light (center spotlight fading outwards)
-    const lampGrad = ctx.createRadialGradient(
+        const lampGrad = ctx.createRadialGradient(
       this.width / 2,
       this.height / 2,
       30,
@@ -266,11 +248,9 @@ export class Table {
 
     ctx.restore();
 
-    // 3. Diamonds / Pearl Sights on Rails
-    this.drawDiamondSights(ctx);
+        this.drawDiamondSights(ctx);
 
-    // 4. Cushions with dark outline
-    ctx.strokeStyle = OD;
+        ctx.strokeStyle = OD;
     ctx.lineWidth = 4;
     for (const c of this.cushions) {
       ctx.beginPath();
@@ -279,13 +259,11 @@ export class Table {
       ctx.stroke();
     }
 
-    // 5. Six Thematic Pockets with Gear Rim, 18 Brass Rivets & Crossed Mesh Net
-    for (const p of this.pockets) {
+        for (const p of this.pockets) {
       const r = p.radius;
       const ringR = r + 6.5;
 
-      // Outer drop shadow
-      const qGrad = ctx.createRadialGradient(p.x, p.y, r * 0.5, p.x, p.y, ringR + 8);
+            const qGrad = ctx.createRadialGradient(p.x, p.y, r * 0.5, p.x, p.y, ringR + 8);
       qGrad.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
       qGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.beginPath();
@@ -293,8 +271,7 @@ export class Table {
       ctx.fillStyle = qGrad;
       ctx.fill();
 
-      // Outer and middle rings matching prototype
-      ctx.beginPath();
+            ctx.beginPath();
       ctx.arc(p.x, p.y, ringR, 0, Math.PI * 2);
       ctx.fillStyle = th[0];
       ctx.fill();
@@ -312,12 +289,10 @@ export class Table {
       ctx.fillStyle = th[2];
       ctx.fill();
 
-      // Thematic Pocket Rim Details per Stage (1:1 with Prototype B)
-      const Z = tableIndex % 10;
+            const Z = tableIndex % 10;
 
       if (Z === 4) {
-        // Table 4 (Praia): Shark teeth rim pointing inward
-        const teethCount = 14;
+                const teethCount = 14;
         ctx.fillStyle = '#ffffff';
         ctx.strokeStyle = OD;
         ctx.lineWidth = 0.8;
@@ -335,8 +310,7 @@ export class Table {
           ctx.stroke();
         }
       } else if (Z === 5) {
-        // Table 5 (Cassino): Glowing neon dots flashing
-        const bulbCount = 10;
+                const bulbCount = 10;
         for (let i = 0; i < bulbCount; i++) {
           const an = (i * Math.PI * 2) / bulbCount;
           const nx = p.x + Math.cos(an) * (ringR - 2.2);
@@ -348,8 +322,7 @@ export class Table {
           ctx.fill();
         }
       } else if (Z === 2 || Z === 8) {
-        // Tables 2 & 8 (VIP & Imperial): Alternating Rubies & Sapphires
-        const gemCount = 8;
+                const gemCount = 8;
         for (let i = 0; i < gemCount; i++) {
           const an = (i * Math.PI * 2) / gemCount;
           const nx = p.x + Math.cos(an) * (ringR - 2.2);
@@ -363,8 +336,7 @@ export class Table {
           ctx.stroke();
         }
       } else if (Z === 9) {
-        // Table 9 (Mesa do Destino): Spinning animated cosmic vortex
-        ctx.save();
+                ctx.save();
         ctx.beginPath();
         ctx.arc(p.x, p.y, r - 0.5, 0, Math.PI * 2);
         ctx.clip();
@@ -385,8 +357,7 @@ export class Table {
         }
         ctx.restore();
       } else {
-        // Default / Tables 0, 1, 3, 6, 7: 18 Golden rivets along the outer rim
-        const notches = 18;
+                const notches = 18;
         ctx.fillStyle = '#f2c230';
         ctx.strokeStyle = OD;
         ctx.lineWidth = 0.6;
@@ -401,8 +372,7 @@ export class Table {
         }
       }
 
-      // Dark Interior Void with Gradient
-      const voidGrad = ctx.createRadialGradient(p.x - 2, p.y - 2, 1, p.x, p.y, r);
+            const voidGrad = ctx.createRadialGradient(p.x - 2, p.y - 2, 1, p.x, p.y, r);
       voidGrad.addColorStop(0, '#1c1222');
       voidGrad.addColorStop(1, '#030206');
       ctx.beginPath();
@@ -410,8 +380,7 @@ export class Table {
       ctx.fillStyle = voidGrad;
       ctx.fill();
 
-      // Mesh Net pattern inside pocket
-      ctx.save();
+            ctx.save();
       ctx.beginPath();
       ctx.arc(p.x, p.y, r - 0.6, 0, Math.PI * 2);
       ctx.clip();
@@ -427,28 +396,24 @@ export class Table {
       }
       ctx.restore();
 
-      // Specular highlight arc
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
       ctx.lineWidth = 1.3;
       ctx.beginPath();
       ctx.arc(p.x, p.y, r + 2.9, 3.6, 4.5);
       ctx.stroke();
     }
 
-    // 6. Ambient Table Props on Rails (Beer, Nuts, Chalk, Coffee, Martini, Dice...)
-    this.drawRailProps(ctx, tableIndex, shakeAmount, time);
+        this.drawRailProps(ctx, tableIndex, shakeAmount, time);
 
     ctx.restore();
   }
 
-  // Draw authentic boteco props placed on the wooden rails that sway with table shake
-  private drawRailProps(ctx: CanvasRenderingContext2D, tableIndex: number, shake: number, time: number): void {
+    private drawRailProps(ctx: CanvasRenderingContext2D, tableIndex: number, shake: number, time: number): void {
     const px = Math.sin(time * 1.7) * shake * 2.5;
     const py = Math.cos(time * 1.3) * shake * 2.5;
 
     const Z = tableIndex % 10;
-    // Six thematic slots per table matching Prototype AM[table].p
-    let propTypes = ['beer', 'beer', 'nuts', 'chalk', 'cards', 'beer'];
+        let propTypes = ['beer', 'beer', 'nuts', 'chalk', 'cards', 'beer'];
     if (Z === 2 || Z === 7) {
       propTypes = ['martini', 'martini', 'chips', 'cash', 'martini', 'chips'];
     } else if (Z === 4) {
@@ -470,15 +435,13 @@ export class Table {
       ctx.save();
       ctx.translate(slot.x, slot.y);
 
-      // Ambient drop shadow
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
       ctx.beginPath();
       ctx.arc(2, 3, 9, 0, Math.PI * 2);
       ctx.fill();
 
       if (slot.type === 'beer') {
-        // Beer mug with glass handle and amber beer
-        ctx.beginPath();
+                ctx.beginPath();
         ctx.arc(0, 0, 9, 0, Math.PI * 2);
         ctx.fillStyle = '#e8dcc0';
         ctx.fill();
@@ -486,8 +449,7 @@ export class Table {
         ctx.strokeStyle = OD;
         ctx.stroke();
 
-        // Liquid sway
-        const beerGrad = ctx.createRadialGradient(px - 1.5, py - 1.5, 0, px, py, 6);
+                const beerGrad = ctx.createRadialGradient(px - 1.5, py - 1.5, 0, px, py, 6);
         beerGrad.addColorStop(0, '#ffd35a');
         beerGrad.addColorStop(1, '#d98410');
         ctx.beginPath();
@@ -495,21 +457,18 @@ export class Table {
         ctx.fillStyle = beerGrad;
         ctx.fill();
 
-        // Foam bubbles
-        ctx.fillStyle = '#fff7de';
+                ctx.fillStyle = '#fff7de';
         ctx.beginPath();
         ctx.arc(px, py, 3.2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Glass highlight arc
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
         ctx.lineWidth = 1.2;
         ctx.beginPath();
         ctx.arc(px, py, 5.2, 3.5, 4.4);
         ctx.stroke();
       } else if (slot.type === 'nuts') {
-        // Wood bowl of roasted peanuts
-        ctx.beginPath();
+                ctx.beginPath();
         ctx.arc(0, 0, 9, 0, Math.PI * 2);
         ctx.fillStyle = '#6b4226';
         ctx.fill();
@@ -533,8 +492,7 @@ export class Table {
           ctx.stroke();
         }
       } else if (slot.type === 'chalk') {
-        // Blue cue chalk cube with tip indentation
-        ctx.beginPath();
+                ctx.beginPath();
         ctx.roundRect(-5.5, -5.5, 11, 11, 2);
         ctx.fillStyle = '#2563eb';
         ctx.fill();
@@ -552,8 +510,7 @@ export class Table {
         ctx.fillStyle = '#1d4ed8';
         ctx.fill();
       } else if (slot.type === 'cards') {
-        // Two playing cards on the rail
-        ctx.save();
+                ctx.save();
         ctx.rotate(0.3);
         ctx.beginPath();
         ctx.roundRect(-5, -7, 10, 14, 1.5);
@@ -577,8 +534,7 @@ export class Table {
         ctx.fillRect(-1.5, -2, 3, 3);
         ctx.restore();
       } else if (slot.type === 'martini') {
-        // Martini glass with olive
-        ctx.beginPath();
+                ctx.beginPath();
         ctx.arc(0, 0, 8, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
         ctx.fill();
@@ -588,11 +544,10 @@ export class Table {
 
         ctx.beginPath();
         ctx.arc(px * 0.5, py * 0.5, 3, 0, Math.PI * 2);
-        ctx.fillStyle = '#65a30d'; // Olive
+        ctx.fillStyle = '#65a30d';
         ctx.fill();
       } else if (slot.type === 'chips') {
-        // Casino Poker Chip
-        ctx.beginPath();
+                ctx.beginPath();
         ctx.arc(0, 0, 7.5, 0, Math.PI * 2);
         ctx.fillStyle = '#dc2626';
         ctx.fill();
@@ -606,8 +561,7 @@ export class Table {
         ctx.lineWidth = 1.5;
         ctx.stroke();
       } else if (slot.type === 'dice') {
-        // Pair of Casino Dice
-        ctx.beginPath();
+                ctx.beginPath();
         ctx.roundRect(-4.5, -4.5, 9, 9, 2);
         ctx.fillStyle = '#f8fafc';
         ctx.fill();
@@ -620,8 +574,7 @@ export class Table {
         ctx.fillStyle = '#dc2626';
         ctx.fill();
       } else if (slot.type === 'coco') {
-        // Green Coconut with straw
-        ctx.beginPath();
+                ctx.beginPath();
         ctx.arc(0, 0, 8.5, 0, Math.PI * 2);
         ctx.fillStyle = '#22c55e';
         ctx.fill();
@@ -660,16 +613,14 @@ export class Table {
     const playW = this.maxX - this.minX;
     const playH = this.maxY - this.minY;
 
-    // Top and bottom sights (7 sights, center omitted for middle pocket)
-    for (let i = 1; i <= 7; i++) {
+        for (let i = 1; i <= 7; i++) {
       if (i === 4) continue;
       const x = this.minX + (playW * i) / 8;
       drawSight(x, yTop);
       drawSight(x, yBottom);
     }
 
-    // Left and right sights (3 sights, center omitted)
-    for (let j = 1; j <= 3; j++) {
+        for (let j = 1; j <= 3; j++) {
       if (j === 2) continue;
       const y = this.minY + (playH * j) / 4;
       drawSight(xLeft, y);

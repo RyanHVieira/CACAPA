@@ -24,9 +24,11 @@
   position: relative;
   width: min(100vw, calc((100vh - 8px) * 16 / 9));
   aspect-ratio: 16 / 9;
+  max-height: calc(100vh - 8px);
+  height: auto;
   border-radius: 3% / 5%;
   overflow: hidden;
-  box-shadow: 0 0 0 3px #000, 0 0 70px #000 inset;
+  box-shadow: 0 0 0 4px #0b0710, inset 0 0 70px rgba(0, 0, 0, 0.85);
   background: var(--bg-dark);
 }
 
@@ -38,28 +40,42 @@
   filter: contrast(1.12) saturate(1.25);
 }
 
+/* 1. CRT Scanlines with subtle phosphor flicker */
 #w::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 20;
-  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.3) 0 1px, transparent 1px 3px);
+  z-index: 30;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.18) 0px,
+    rgba(0, 0, 0, 0.18) 1.2px,
+    transparent 1.2px,
+    transparent 6px
+  );
   animation: fl 0.14s infinite;
 }
 
+/* 2. CRT Curved Glass Vignette & Subtle Chromatic Aberration */
 #w::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 25;
-  background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.7) 100%),
-              linear-gradient(90deg, rgba(255, 0, 60, 0.05), transparent 30%, transparent 70%, rgba(0, 200, 255, 0.06));
+  z-index: 35;
+  background:
+    radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.7) 100%),
+    linear-gradient(90deg, rgba(255, 0, 60, 0.05), transparent 30%, transparent 70%, rgba(0, 200, 255, 0.06));
 }
 
 @keyframes fl {
   50% { opacity: 0.82; }
+}
+
+#w.nocrt {
+  box-shadow: none;
+  border-radius: 0;
 }
 
 #w.nocrt::before,
@@ -71,10 +87,8 @@
   filter: none;
 }
 
-/* Sticker Shadow & Panel Utilities */
 .cacapa-sticker {
-  border: 3px solid #0b0710;
-  border-radius: 12px;
+
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45);
 }
 
@@ -121,7 +135,6 @@
   font-family: var(--font-cacapa);
 }
 
-/* Neon Sign Styles */
 .neon-sign {
   border: 2px solid #3ec1d3;
   box-shadow: 0 0 14px rgba(62, 193, 211, 0.65), inset 0 0 6px rgba(62, 193, 211, 0.25);
@@ -138,7 +151,6 @@
   text-shadow: 0 0 8px #3ec1d3, 0 0 3px #3ec1d3;
 }
 
-/* Animations */
 @keyframes cacapa-bob {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-3px); }
@@ -165,7 +177,6 @@
   animation: foul-pulse 0.9s ease-in-out infinite;
 }
 
-/* Boss Hazard Stripes & Pulse */
 @keyframes hazard-move {
   0% { background-position: 0 0; }
   100% { background-position: 28px 0; }
@@ -196,7 +207,6 @@
   animation: boss-pulse 1.4s ease-in-out infinite;
 }
 
-/* Authentic Caçapa Joker Activation & Visual Effects */
 @keyframes rotate-rays {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -281,7 +291,6 @@ body {
   min-height: 100vh;
 }
 
-/* Pool Game Styles */
 .pool-game-page {
   min-height: 100vh;
   display: flex;
@@ -301,13 +310,11 @@ body {
 
 .table-wrapper {
   position: relative;
-  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 0 0 4px #374151;
   background: #111827;
   width: 100%;
   max-width: 1400px;
-  aspect-ratio: 2 / 1; /* Match table aspect ratio (800:400) */
+  aspect-ratio: 2 / 1; 
 }
 
 .pool-table-canvas {
@@ -349,7 +356,6 @@ body {
   box-shadow: 0 0 10px rgba(139, 69, 19, 0.5);
 }
 
-/* HUD */
 .game-hud {
   width: 100%;
   max-width: 1400px;
@@ -568,7 +574,6 @@ body {
   font-size: 0.75rem;
 }
 
-/* Modals */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -795,7 +800,6 @@ body {
   to { transform: rotate(360deg); }
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .hud-top {
     gap: 0.25rem;

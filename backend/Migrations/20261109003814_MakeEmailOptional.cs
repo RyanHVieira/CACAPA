@@ -4,10 +4,8 @@
 
 namespace backend.Migrations
 {
-    /// <inheritdoc />
     public partial class MakeEmailOptional : Migration
     {
-        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(
@@ -32,7 +30,6 @@ namespace backend.Migrations
                 filter: "\"Email\" IS NOT NULL");
         }
 
-        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(

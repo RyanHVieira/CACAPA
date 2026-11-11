@@ -10,7 +10,6 @@ import {
 import { Ball } from '../models/Ball';
 import type { Pocket } from '../models/Table';
 
-// 1. Giz Azul (Blue Chalk) - Cushion bonuses
 export class BlueChalkJoker extends Card {
   readonly id = 'blue_chalk';
   readonly name = 'Giz Azul';
@@ -42,7 +41,6 @@ export class BlueChalkJoker extends Card {
   }
 }
 
-// 2. Coringa Groselha - Mult per pocketed ball
 export class GroselhaJoker extends Card {
   readonly id = 'groselha_joker';
   readonly name = 'Coringa Groselha';
@@ -75,7 +73,6 @@ export class GroselhaJoker extends Card {
   }
 }
 
-// 3. Saco de Fichas (Billiard Joker)
 export class BilliardJoker extends Card {
   readonly id = 'billiard_joker';
   readonly name = 'Saco de Fichas';
@@ -106,7 +103,6 @@ export class BilliardJoker extends Card {
   }
 }
 
-// 4. Coringa Fiel (Jolly Joker)
 export class JollyJoker extends Card {
   readonly id = 'jolly_joker';
   readonly name = 'Coringa Fiel';
@@ -137,7 +133,6 @@ export class JollyJoker extends Card {
   }
 }
 
-// 5. Oito da Sorte (Lucky Eight)
 export class LuckyEightJoker extends Card {
   readonly id = 'lucky_eight';
   readonly name = 'Oito da Sorte';
@@ -171,7 +166,6 @@ export class LuckyEightJoker extends Card {
   }
 }
 
-// 6. Mira Laser / Telescópio
 export class TelescopeJoker extends Card {
   readonly id = 'telescope';
   readonly name = 'Mira Laser';
@@ -202,7 +196,6 @@ export class TelescopeJoker extends Card {
   }
 }
 
-// 7. Caçapa de Ouro (Golden Pocket) - Earns money during shots
 export class GoldenPocketJoker extends Card {
   readonly id = 'golden_pocket';
   readonly name = 'Caçapa de Ouro';
@@ -234,7 +227,6 @@ export class GoldenPocketJoker extends Card {
   }
 }
 
-// 8. O Barão do Feltro (Baron Multiplier)
 export class BaronJoker extends Card {
   readonly id = 'baron_joker';
   readonly name = 'Barão do Feltro';
@@ -265,7 +257,6 @@ export class BaronJoker extends Card {
   }
 }
 
-// 9. Dueto Perfeito (Duet Joker)
 export class DuetJoker extends Card {
   readonly id = 'duet_joker';
   readonly name = 'Dueto Perfeito';
@@ -296,7 +287,6 @@ export class DuetJoker extends Card {
   }
 }
 
-// 10. O Touro dos Lucros (Bull Joker)
 export class BullJoker extends Card {
   readonly id = 'bull_joker';
   readonly name = 'Touro Financeiro';
@@ -328,7 +318,6 @@ export class BullJoker extends Card {
   }
 }
 
-// 11. Lisas de Aço (Solid Steel)
 export class SolidSteelJoker extends Card {
   readonly id = 'solid_steel';
   readonly name = 'Lisas de Aço';
@@ -361,7 +350,6 @@ export class SolidSteelJoker extends Card {
   }
 }
 
-// 12. Listradas em Chamas (Burning Stripes)
 export class BurningStripesJoker extends Card {
   readonly id = 'burning_stripes';
   readonly name = 'Listradas em Chamas';
@@ -394,7 +382,6 @@ export class BurningStripesJoker extends Card {
   }
 }
 
-// 13. O Bruxo da Sinuca (Wizard Cue) - Legendary
 export class WizardCueJoker extends Card {
   readonly id = 'wizard_cue';
   readonly name = 'O Bruxo da Sinuca';
@@ -425,7 +412,6 @@ export class WizardCueJoker extends Card {
   }
 }
 
-// 14. Garimpeiro de Ouro (Gold Digger)
 export class GoldDiggerJoker extends Card {
   readonly id = 'gold_digger';
   readonly name = 'Garimpeiro de Ouro';

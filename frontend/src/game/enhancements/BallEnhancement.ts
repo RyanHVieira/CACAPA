@@ -18,11 +18,9 @@ export abstract class BallEnhancement {
 
   abstract onPocketed(ball: Ball, context: ShotContext): BallTriggerResult[];
 
-  // Hook for visual effects on the canvas
-  abstract drawEffect(ctx: CanvasRenderingContext2D, ball: Ball): void;
+    abstract drawEffect(ctx: CanvasRenderingContext2D, ball: Ball): void;
 }
 
-// 1. Bola Dourada
 export class GoldBallEnhancement extends BallEnhancement {
   readonly id = 'gold';
   readonly name = 'Bola Dourada';
@@ -52,7 +50,6 @@ export class GoldBallEnhancement extends BallEnhancement {
   }
 }
 
-// 2. Bola da Sorte
 export class LuckyBallEnhancement extends BallEnhancement {
   readonly id = 'lucky';
   readonly name = 'Bola da Sorte';
@@ -88,7 +85,6 @@ export class LuckyBallEnhancement extends BallEnhancement {
   }
 }
 
-// 3. Bola de Prata / Aço
 export class SilverBallEnhancement extends BallEnhancement {
   readonly id = 'silver';
   readonly name = 'Bola de Prata';
@@ -114,7 +110,6 @@ export class SilverBallEnhancement extends BallEnhancement {
   }
 }
 
-// 4. Peluda (Prototype 'pel')
 export class PeludaBallEnhancement extends BallEnhancement {
   readonly id = 'pel';
   readonly name = 'Peluda';
@@ -130,8 +125,7 @@ export class PeludaBallEnhancement extends BallEnhancement {
 
   drawEffect(ctx: CanvasRenderingContext2D, ball: Ball): void {
     const r = ball.radius;
-    // Spiked fuzzy outline
-    ctx.save();
+        ctx.save();
     ctx.lineCap = 'round';
     ctx.strokeStyle = '#0b0710';
     ctx.lineWidth = 3.6;
@@ -157,7 +151,6 @@ export class PeludaBallEnhancement extends BallEnhancement {
   }
 }
 
-// 5. Seis-Sete (Prototype '67')
 export class SeisSeteBallEnhancement extends BallEnhancement {
   readonly id = '67';
   readonly name = 'Seis-Sete';
@@ -185,7 +178,6 @@ export class SeisSeteBallEnhancement extends BallEnhancement {
   }
 }
 
-// 6. Sigma (Prototype 'sig')
 export class SigmaBallEnhancement extends BallEnhancement {
   readonly id = 'sig';
   readonly name = 'Sigma';
@@ -202,20 +194,17 @@ export class SigmaBallEnhancement extends BallEnhancement {
   drawEffect(ctx: CanvasRenderingContext2D, ball: Ball): void {
     const r = ball.radius;
     ctx.save();
-    // Pixel black sunglasses over the ball
-    ctx.fillStyle = '#0b0710';
+        ctx.fillStyle = '#0b0710';
     ctx.fillRect(-r * 0.75, -r * 0.45, r * 0.65, r * 0.4);
     ctx.fillRect(r * 0.1, -r * 0.45, r * 0.65, r * 0.4);
     ctx.fillRect(-r * 0.1, -r * 0.35, r * 0.2, r * 0.12);
-    // White shine on glasses
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.fillRect(-r * 0.6, -r * 0.4, r * 0.25, r * 0.1);
     ctx.fillRect(r * 0.25, -r * 0.4, r * 0.25, r * 0.1);
     ctx.restore();
   }
 }
 
-// 7. Rizz (Prototype 'riz')
 export class RizzBallEnhancement extends BallEnhancement {
   readonly id = 'riz';
   readonly name = 'Rizz';
@@ -233,8 +222,7 @@ export class RizzBallEnhancement extends BallEnhancement {
     const r = ball.radius;
     ctx.save();
     ctx.fillStyle = '#e86fb0';
-    // Draw cute heart badge
-    ctx.beginPath();
+        ctx.beginPath();
     ctx.arc(r * 0.75, -r * 0.75, 4.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#0b0710';
@@ -250,7 +238,6 @@ export class RizzBallEnhancement extends BallEnhancement {
   }
 }
 
-// 8. Ohio (Prototype 'ohi')
 export class OhioBallEnhancement extends BallEnhancement {
   readonly id = 'ohi';
   readonly name = 'Ohio';
@@ -290,7 +277,6 @@ export class OhioBallEnhancement extends BallEnhancement {
   }
 }
 
-// 9. Gigachad (Prototype 'chd')
 export class GigachadBallEnhancement extends BallEnhancement {
   readonly id = 'chd';
   readonly name = 'Gigachad';
@@ -324,7 +310,6 @@ export class GigachadBallEnhancement extends BallEnhancement {
   }
 }
 
-// 10. Sapo Raro (Prototype 'sap')
 export class SapoRaroBallEnhancement extends BallEnhancement {
   readonly id = 'sap';
   readonly name = 'Sapo Raro';
@@ -348,8 +333,7 @@ export class SapoRaroBallEnhancement extends BallEnhancement {
   drawEffect(ctx: CanvasRenderingContext2D, ball: Ball): void {
     const r = ball.radius;
     ctx.save();
-    // Frog green badge
-    ctx.beginPath();
+        ctx.beginPath();
     ctx.arc(r * 0.75, -r * 0.75, 5, 0, Math.PI * 2);
     ctx.fillStyle = '#5fae3a';
     ctx.fill();
@@ -357,8 +341,7 @@ export class SapoRaroBallEnhancement extends BallEnhancement {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Frog eyes
-    ctx.fillStyle = '#fff';
+        ctx.fillStyle = '#fff';
     ctx.fillRect(r * 0.75 - 3, -r * 0.75 - 2, 2.5, 2.5);
     ctx.fillRect(r * 0.75 + 0.5, -r * 0.75 - 2, 2.5, 2.5);
     ctx.fillStyle = '#0b0710';
@@ -368,7 +351,6 @@ export class SapoRaroBallEnhancement extends BallEnhancement {
   }
 }
 
-// 11. Máscara de Hóquei (Prototype 'hoq')
 export class HockeyMaskBallEnhancement extends BallEnhancement {
   readonly id = 'hoq';
   readonly name = 'Máscara de Hóquei';
@@ -388,8 +370,7 @@ export class HockeyMaskBallEnhancement extends BallEnhancement {
   drawEffect(ctx: CanvasRenderingContext2D, ball: Ball): void {
     const r = ball.radius;
     ctx.save();
-    // Jason hockey mask badge
-    ctx.beginPath();
+        ctx.beginPath();
     ctx.arc(r * 0.75, -r * 0.75, 5.5, 0, Math.PI * 2);
     ctx.fillStyle = '#f2efe4';
     ctx.fill();
@@ -397,8 +378,7 @@ export class HockeyMaskBallEnhancement extends BallEnhancement {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Red chevron marks
-    ctx.strokeStyle = '#d6322a';
+        ctx.strokeStyle = '#d6322a';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(r * 0.75 - 2.5, -r * 0.75 - 3);
@@ -409,7 +389,6 @@ export class HockeyMaskBallEnhancement extends BallEnhancement {
   }
 }
 
-// 12. Máscara Branca (Prototype 'bco')
 export class WhiteMaskBallEnhancement extends BallEnhancement {
   readonly id = 'bco';
   readonly name = 'Máscara Branca';
@@ -438,8 +417,7 @@ export class WhiteMaskBallEnhancement extends BallEnhancement {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Dark eye holes
-    ctx.fillStyle = '#0b0710';
+        ctx.fillStyle = '#0b0710';
     ctx.beginPath();
     ctx.ellipse(r * 0.75 - 1.8, -r * 0.75 - 0.5, 1, 1.4, 0, 0, Math.PI * 2);
     ctx.ellipse(r * 0.75 + 1.8, -r * 0.75 - 0.5, 1, 1.4, 0, 0, Math.PI * 2);
@@ -448,7 +426,6 @@ export class WhiteMaskBallEnhancement extends BallEnhancement {
   }
 }
 
-// 13. Suéter Listrado (Prototype 'lst')
 export class StripedSweaterBallEnhancement extends BallEnhancement {
   readonly id = 'lst';
   readonly name = 'Suéter Listrado';
@@ -467,8 +444,7 @@ export class StripedSweaterBallEnhancement extends BallEnhancement {
   drawEffect(ctx: CanvasRenderingContext2D, ball: Ball): void {
     const r = ball.radius;
     ctx.save();
-    // Freddy Krueger striped sweater badge
-    ctx.beginPath();
+        ctx.beginPath();
     ctx.arc(r * 0.75, -r * 0.75, 5.5, 0, Math.PI * 2);
     ctx.clip();
     for (let i = -4; i < 4; i++) {
@@ -484,7 +460,6 @@ export class StripedSweaterBallEnhancement extends BallEnhancement {
   }
 }
 
-// 14. Grito (Prototype 'gri')
 export class ScreamBallEnhancement extends BallEnhancement {
   readonly id = 'gri';
   readonly name = 'Grito';
@@ -512,8 +487,7 @@ export class ScreamBallEnhancement extends BallEnhancement {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Elongated scream eyes and open mouth
-    ctx.fillStyle = '#0b0710';
+        ctx.fillStyle = '#0b0710';
     ctx.beginPath();
     ctx.ellipse(r * 0.75 - 1.6, -r * 0.75 - 1.2, 0.9, 1.6, -0.2, 0, Math.PI * 2);
     ctx.ellipse(r * 0.75 + 1.6, -r * 0.75 - 1.2, 0.9, 1.6, 0.2, 0, Math.PI * 2);
@@ -523,7 +497,6 @@ export class ScreamBallEnhancement extends BallEnhancement {
   }
 }
 
-// 15. LeMerchant (Prototype 'lem')
 export class LeMerchantBallEnhancement extends BallEnhancement {
   readonly id = 'lem';
   readonly name = 'LeMerchant';
@@ -543,8 +516,7 @@ export class LeMerchantBallEnhancement extends BallEnhancement {
   drawEffect(ctx: CanvasRenderingContext2D, ball: Ball): void {
     const r = ball.radius;
     ctx.save();
-    // Hellraiser puzzle box pattern badge
-    ctx.beginPath();
+        ctx.beginPath();
     ctx.arc(r * 0.75, -r * 0.75, 5.5, 0, Math.PI * 2);
     ctx.fillStyle = '#14090a';
     ctx.fill();
@@ -559,7 +531,6 @@ export class LeMerchantBallEnhancement extends BallEnhancement {
   }
 }
 
-// 16. Jaws (Prototype 'jaw')
 export class JawsBallEnhancement extends BallEnhancement {
   readonly id = 'jaw';
   readonly name = 'Jaws';
@@ -576,8 +547,7 @@ export class JawsBallEnhancement extends BallEnhancement {
   drawEffect(ctx: CanvasRenderingContext2D, ball: Ball): void {
     const r = ball.radius;
     ctx.save();
-    // Animated shark teeth ring inside the ball
-    ctx.strokeStyle = '#7a1020';
+        ctx.strokeStyle = '#7a1020';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.arc(0, 0, r - 1.5, 0, Math.PI * 2);
@@ -600,7 +570,6 @@ export class JawsBallEnhancement extends BallEnhancement {
   }
 }
 
-// 17. Necronomicon Possuída (Prototype 'nec')
 export class NecronomiconBallEnhancement extends BallEnhancement {
   readonly id = 'nec';
   readonly name = 'Necronomicon';
@@ -617,8 +586,7 @@ export class NecronomiconBallEnhancement extends BallEnhancement {
   drawEffect(ctx: CanvasRenderingContext2D, ball: Ball): void {
     const r = ball.radius;
     ctx.save();
-    // Green demonic glowing aura
-    ctx.shadowColor = '#7dff6a';
+        ctx.shadowColor = '#7dff6a';
     ctx.shadowBlur = 10;
     ctx.strokeStyle = 'rgba(125, 255, 106, 0.85)';
     ctx.lineWidth = 2;
@@ -626,8 +594,7 @@ export class NecronomiconBallEnhancement extends BallEnhancement {
     ctx.arc(0, 0, r + 2.5, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Purple/green flame tongues
-    for (let k = 0; k < 6; k++) {
+        for (let k = 0; k < 6; k++) {
       const a = k * 1.047;
       ctx.strokeStyle = k % 2 === 0 ? '#9a6bff' : '#7dff6a';
       ctx.lineWidth = 1.5;
@@ -637,8 +604,7 @@ export class NecronomiconBallEnhancement extends BallEnhancement {
       ctx.stroke();
     }
 
-    // Demonic slit eye hovering above ball
-    ctx.translate(0, -r - 7);
+        ctx.translate(0, -r - 7);
     ctx.beginPath();
     ctx.ellipse(0, 0, 4.5, 2.5, 0, 0, Math.PI * 2);
     ctx.fillStyle = '#f4ecd8';
@@ -657,7 +623,6 @@ export class NecronomiconBallEnhancement extends BallEnhancement {
 
 export { PeludaBallEnhancement as FuzzyBallEnhancement };
 
-// Catalog / Factory for Enhancements
 export class BallEnhancementCatalog {
   static getAll(): BallEnhancement[] {
     return [

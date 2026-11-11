@@ -21,10 +21,8 @@ export const CacapaHeader: React.FC<CacapaHeaderProps> = ({
 
   return (
     <div className="w-full max-w-[960px] mx-auto mb-4 bg-slate-900/95 border-2 border-slate-700/80 rounded-2xl p-4 shadow-xl backdrop-blur-md">
-      {/* Top row: Ante, Blind info, Money, Audio */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 border-b border-slate-800 pb-3">
-        {/* Ante and Blind */}
-        <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3 border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
           <span className="bg-amber-500/20 text-amber-400 font-extrabold px-3 py-1 rounded-lg text-xs uppercase tracking-wider border border-amber-500/30">
             Ante {engine.ante}/8
           </span>
@@ -43,8 +41,7 @@ export const CacapaHeader: React.FC<CacapaHeaderProps> = ({
           </span>
         </div>
 
-        {/* Money, View Balls and Sound */}
-        <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3">
           {onViewBalls && (
             <button
               onClick={onViewBalls}
@@ -73,10 +70,8 @@ export const CacapaHeader: React.FC<CacapaHeaderProps> = ({
         </div>
       </div>
 
-      {/* Main Stats Row: Target Bar + Big Caçapa Boxes */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-        {/* Target score progress bar (5 cols) */}
-        <div className="md:col-span-5 bg-slate-950/80 border border-slate-800 rounded-xl p-3">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                <div className="md:col-span-5 bg-slate-950/80 border border-slate-800 rounded-xl p-3">
           <div className="flex justify-between items-center text-xs font-bold uppercase tracking-wider mb-1.5">
             <span className="text-slate-400">Meta da Rodada</span>
             <span className="text-amber-400 font-mono">
@@ -101,8 +96,7 @@ export const CacapaHeader: React.FC<CacapaHeaderProps> = ({
           </div>
         </div>
 
-        {/* Big Caçapa Chips Box (Blue) */}
-        <div className="md:col-span-3 bg-gradient-to-br from-blue-950/90 to-blue-900/60 border-2 border-blue-500/80 rounded-xl p-2.5 text-center shadow-lg relative overflow-hidden group">
+                <div className="md:col-span-3 bg-gradient-to-br from-blue-950/90 to-blue-900/60 border-2 border-blue-500/80 rounded-xl p-2.5 text-center shadow-lg relative overflow-hidden group">
           <div className="absolute -right-4 -top-4 w-12 h-12 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20" />
           <span className="text-[10px] uppercase font-black tracking-widest text-blue-300 block mb-0.5">
             Fichas Base
@@ -115,8 +109,7 @@ export const CacapaHeader: React.FC<CacapaHeaderProps> = ({
           </div>
         </div>
 
-        {/* Big Caçapa Mult Box (Red) */}
-        <div className="md:col-span-2 bg-gradient-to-br from-rose-950/90 to-red-900/60 border-2 border-red-500/80 rounded-xl p-2.5 text-center shadow-lg relative overflow-hidden group">
+                <div className="md:col-span-2 bg-gradient-to-br from-rose-950/90 to-red-900/60 border-2 border-red-500/80 rounded-xl p-2.5 text-center shadow-lg relative overflow-hidden group">
           <div className="absolute -right-4 -top-4 w-12 h-12 bg-red-500/10 rounded-full blur-xl group-hover:bg-red-500/20" />
           <span className="text-[10px] uppercase font-black tracking-widest text-red-300 block mb-0.5">
             Mult
@@ -129,8 +122,7 @@ export const CacapaHeader: React.FC<CacapaHeaderProps> = ({
           </div>
         </div>
 
-        {/* Shots count (2 cols) */}
-        <div className="md:col-span-2 bg-slate-950/80 border border-slate-800 rounded-xl p-2.5 text-center">
+                <div className="md:col-span-2 bg-slate-950/80 border border-slate-800 rounded-xl p-2.5 text-center">
           <span className="text-[10px] uppercase font-black tracking-widest text-slate-400 block mb-0.5">
             Tacadas
           </span>

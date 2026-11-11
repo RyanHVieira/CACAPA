@@ -4,10 +4,10 @@ import { Card } from '../cards/Card';
 import type { ShotPhysicsEvents } from '../physics/PhysicsEngine';
 
 export interface PotEvaluationContext {
-  potIndex: number; // 1-based (pots in B)
+  potIndex: number;
   ball: Ball;
   pocket: Pocket;
-  railsHit: number; // b.rails in B
+  railsHit: number;
   distanceTraveled?: number;
   sidesTouched?: number;
   isPossessed?: boolean;
@@ -41,8 +41,7 @@ export interface ShotEndResult {
 }
 
 export class ScoreManager {
-  // Sabor helper: returns the source joker copied by Sabor at index i
-  private getSaborSource(jokers: Card[], index: number): Card | null {
+    private getSaborSource(jokers: Card[], index: number): Card | null {
     const card = jokers[index];
     if (!card || card.id !== 'sabor' || (card as { isLocked?: boolean }).isLocked) return null;
     if (index < 1) return null;
@@ -51,8 +50,7 @@ export class ScoreManager {
     return left;
   }
 
-  // Count active copies of a joker (id), taking Sabor into account (cnt(id) in B)
-  public countJoker(jokers: Card[], id: string): number {
+    public countJoker(jokers: Card[], id: string): number {
     let count = 0;
     for (let i = 0; i < jokers.length; i++) {
       const j = jokers[i];
@@ -69,10 +67,7 @@ export class ScoreManager {
     return count;
   }
 
-  /**
-   * Evaluates the scoring of a single pocketed object ball (pot() from B)
-   */
-  public evaluatePot(ctx: PotEvaluationContext): PotResult {
+    public evaluatePot(ctx: PotEvaluationContext): PotResult {
     const {
       potIndex,
       ball,
@@ -99,11 +94,9 @@ export class ScoreManager {
     let deltaShots = 0;
     const messages: string[] = [];
 
-    // Helper to get active joker count
-    const A = (id: string) => this.countJoker(jokers, id);
+        const A = (id: string) => this.countJoker(jokers, id);
 
-    // 1. Curingas (Jokers)
-    if (railsHit > 0) {
+        if (railsHit > 0) {
       const k = A('tab');
       if (k > 0) dm += 3 * k;
     }
@@ -130,8 +123,7 @@ export class ScoreManager {
     const cmbK = A('cmb');
     if (cmbK > 0) dm += 2 * potIndex * cmbK;
 
-    // Corner vs side pocket (in B: p[2] > 25 is corner, < 25 is side/middle)
-    if (pocket.isCorner) {
+        if (pocket.isCorner) {
       const quiK = A('qui');
       if (quiK > 0) dm += 4 * quiK;
     } else {
@@ -139,8 +131,7 @@ export class ScoreManager {
       if (latK > 0) dc += 50 * latK;
     }
 
-    // Par ou Ímpar
-    if (ball.number % 2 === parState.p) {
+        if (ball.number % 2 === parState.p) {
       const parK = A('par');
       if (parK > 0) {
         const e = parState.e;
@@ -159,18 +150,16 @@ export class ScoreManager {
       }
     }
 
-    // Listradas
-    if (stripes[ball.number]) {
+        const isBallStriped = ball.isStriped || !!stripes[ball.number];
+    if (isBallStriped) {
       const lsdK = A('lsd');
       if (lsdK > 0) dc += 30 * lsdK;
     }
 
-    // Rei Midas
-    const midK = A('mid');
+        const midK = A('mid');
     if (midK > 0) deltaMoney += 4 * midK;
 
-    // 2. Modificações da Bola (Ball Mods from BMOD)
-    const mod = ballMods[ball.number] || (ball.enhancement as unknown as { id?: string })?.id;
+        const mod = (ball.enhancement as unknown as { id?: string })?.id || ballMods[ball.number];
     if (mod) {
       if (mod === 'pel') dm += 6;
       if (mod === '67') dc += 67;
@@ -196,13 +185,11 @@ export class ScoreManager {
       }
     }
 
-    // Necronomicon possessed ball
-    if (isPossessed && A('nec') > 0) {
+        if (isPossessed && A('nec') > 0) {
       dc += 50;
     }
 
-    // 3. Taco (Cues from TQ)
-    if (cueId === 'ouro') deltaMoney += 1;
+        if (cueId === 'ouro') deltaMoney += 1;
     if (cueId === 'pes') dc += 20;
     if (cueId === 'sor' && Math.random() < 0.2) dc *= 2;
     if (cueId === 'bru' && power > 0.8) dm += 4;
@@ -211,11 +198,10 @@ export class ScoreManager {
     if (cueId === 'fac' && potIndex === 1) dm += 8;
     if (cueId === 'mch' && railsHit > 0) dc += 15 * Math.min(railsHit, 4);
     if (cueId === 'gar') dm += activeBallsRemaining;
-    if (cueId === 'mac' && stripes[ball.number]) dc += 40;
+    if (cueId === 'mac' && isBallStriped) dc += 40;
     if (cueId === 'mal') dm += 6;
 
-    // 4. Multiplicadores cumulativos aplicados à tacada
-    let multMult = pxm;
+        let multMult = pxm;
     if (mod === 'lem' && sidesTouched >= 3) multMult *= 2;
     if (mod === 'sig') multMult *= 1.5;
     if (mod === 'bco' && activeBallsRemaining <= 0) multMult *= 2;
@@ -234,10 +220,7 @@ export class ScoreManager {
     };
   }
 
-  /**
-   * Final calculation at end of shot (endShot() from B)
-   */
-  public evaluateEndShot(params: {
+    public evaluateEndShot(params: {
     chips: number;
     mult: number;
     pots: number;
@@ -250,16 +233,16 @@ export class ScoreManager {
     let m2 = mult;
     let shotsDelta = 0;
 
-    if (pots >= 2) m2 *= Math.pow(2, A('dob')); // Dobradinha: x2
-    if (pots >= 3) m2 *= Math.pow(3, A('tri')); // Trinca: x3
-    if (pots >= 4) m2 *= Math.pow(3, A('cer')); // Cerco: x3
+    if (pots >= 2) m2 *= Math.pow(2, A('dob'));
+    if (pots >= 3) m2 *= Math.pow(3, A('tri'));
+    if (pots >= 4) m2 *= Math.pow(3, A('cer'));
 
     if (pots >= 3) {
       const relK = A('rel');
-      if (relK > 0) shotsDelta += relK; // Relógio: +1 shot
+      if (relK > 0) shotsDelta += relK;
     }
 
-    if (pots > 0) m2 *= Math.pow(2, A('rei')); // Rei da Mesa: x2
+    if (pots > 0) m2 *= Math.pow(2, A('rei'));
 
     const finalMult = m2;
     const gain = Math.round(chips * finalMult * (scratch ? 0.5 : 1));
@@ -288,8 +271,7 @@ export class ScoreManager {
     };
   }
 
-  // Legacy compatibility method for CacapaPoolEngine callers
-  public evaluateHand(events: ShotPhysicsEvents) {
+    public evaluateHand(events: ShotPhysicsEvents) {
     if (events.scratch) {
       return {
         handName: 'FALTA: BRANCA',

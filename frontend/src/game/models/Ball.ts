@@ -7,7 +7,6 @@ export type Mat3 = [
   [number, number, number]
 ];
 
-// 3D Sphere Rotation Matrix Multiplication (matching prototype rotM)
 export function rotM(M: Mat3, wx: number, wy: number, wz: number): Mat3 {
   const th = Math.hypot(wx, wy, wz);
   if (th < 1e-9) return M;
@@ -43,7 +42,6 @@ export function initM(): Mat3 {
   );
 }
 
-// Settle function: smoothly rolls the ball so the number naturally faces up towards the camera!
 const SETZ = 0.82;
 export function settleBall(ball: Ball, snap: boolean = false): boolean {
   if (ball.isPocketed || ball.isCue) return true;
@@ -65,22 +63,22 @@ export function settleBall(ball: Ball, snap: boolean = false): boolean {
 }
 
 export const BALL_COLORS: Record<number, string> = {
-  0: '#ffffff',  // Branca (Cue)
-  1: '#f2c230',  // 1 Amarela
-  2: '#2a52c9',  // 2 Azul
-  3: '#d6322a',  // 3 Vermelha
-  4: '#7a3bb0',  // 4 Roxa
-  5: '#ee7a1f',  // 5 Laranja
-  6: '#1f9a4a',  // 6 Verde
-  7: '#8c2a2a',  // 7 Marrom
-  8: '#16121c',  // 8 Preta
-  9: '#f2c230',  // 9 Listrada Amarela
-  10: '#2a52c9', // 10 Listrada Azul
-  11: '#d6322a', // 11 Listrada Vermelha
-  12: '#7a3bb0', // 12 Listrada Roxa
-  13: '#ee7a1f', // 13 Listrada Laranja
-  14: '#1f9a4a', // 14 Listrada Verde
-  15: '#8c2a2a', // 15 Listrada Marrom
+  0: '#ffffff',
+  1: '#f2c230',
+  2: '#2a52c9',
+  3: '#d6322a',
+  4: '#7a3bb0',
+  5: '#ee7a1f',
+  6: '#1f9a4a',
+  7: '#8c2a2a',
+  8: '#16121c',
+  9: '#f2c230',
+  10: '#2a52c9',
+  11: '#d6322a',
+  12: '#7a3bb0',
+  13: '#ee7a1f',
+  14: '#1f9a4a',
+  15: '#8c2a2a',
 };
 
 export class Ball {
@@ -104,13 +102,11 @@ export class Ball {
   public isStriped: boolean = false;
   public enhancement: BallEnhancement | null = null;
 
-  // 3D Sphere Rotation Matrix (local X, Y, Z axes)
-  public M: Mat3;
+    public M: Mat3;
 
-  // Prototype tracking metrics
-  public distanceTraveled: number = 0;
-  public sidesHitMask: number = 0; // bitmask for LeMerchant (1=top, 2=bottom, 4=left, 8=right)
-  public isPossessed: boolean = false; // Necronomicon possession
+    public distanceTraveled: number = 0;
+  public sidesHitMask: number = 0;
+  public isPossessed: boolean = false;
 
   constructor(id: number, number: number, x: number, y: number, radius: number = 17) {
     this.id = id;
@@ -123,27 +119,25 @@ export class Ball {
     this.color = BALL_COLORS[number] || '#ffffff';
     this.M = initM();
 
-    // Caçapa base chips by ball number
-    if (this.isCue) {
+        if (this.isCue) {
       this.baseChips = 0;
     } else if (this.isEight) {
       this.baseChips = 60;
     } else {
-      this.baseChips = 10 + number * 5; // e.g. 15 to 85 chips
+      this.baseChips = 10 + number * 5;
     }
 
-    // Initialize settled number facing up
-    settleBall(this, true);
+        settleBall(this, true);
   }
 
   get isSolid(): boolean {
     if (this.enhancement?.id === 'pel') return true;
-    return this.number >= 1 && this.number <= 8;
+    return !this.isStriped;
   }
 
   get isStripe(): boolean {
     if (this.enhancement?.id === 'pel') return true;
-    return this.number >= 9 && this.number <= 15;
+    return this.isStriped;
   }
 
   get speed(): number {
@@ -156,8 +150,7 @@ export class Ball {
   }
 
   update(friction: number, dt: number): void {
-    // Sinking suction animation into pocket center
-    if (this.isSinking) {
+        if (this.isSinking) {
       if (this.targetPocketPos) {
         this.pos.x += (this.targetPocketPos.x - this.pos.x) * 0.16;
         this.pos.y += (this.targetPocketPos.y - this.pos.y) * 0.16;
@@ -173,38 +166,32 @@ export class Ball {
 
     if (this.isPocketed) return;
 
-    // Movement
-    const stepDist = this.vel.mag() * (dt * 60);
+        const stepDist = this.vel.mag() * (dt * 60);
     this.pos.x += this.vel.x * (dt * 60);
     this.pos.y += this.vel.y * (dt * 60);
     this.distanceTraveled += stepDist;
 
-    // 3D Sphere Rotation updated from velocity!
-    const rollSpeedX = (-this.vel.y * (dt * 60)) / this.radius;
+        const rollSpeedX = (-this.vel.y * (dt * 60)) / this.radius;
     const rollSpeedY = (this.vel.x * (dt * 60)) / this.radius;
     if (Math.abs(rollSpeedX) > 1e-5 || Math.abs(rollSpeedY) > 1e-5) {
       this.M = rotM(this.M, rollSpeedX, rollSpeedY, 0);
     }
 
-    // Settle number facing up towards camera as ball slows down or stops
-    settleBall(this, false);
+        settleBall(this, false);
 
-    // Peluda balls brake 2.5x faster (prototype rule: PH.roll + PH.drag * s * (md == 'pel' ? 2.5 : 1))
-    let effectiveFriction = friction;
+        let effectiveFriction = friction;
     if (this.enhancement?.id === 'pel') {
       effectiveFriction = Math.pow(friction, 2.5);
     }
 
-    // Snappier deceleration near stopping threshold
-    if (this.vel.magSq() < 1.2) {
+        if (this.vel.magSq() < 1.2) {
       effectiveFriction *= 0.96;
     }
 
     this.vel.x *= Math.pow(effectiveFriction, dt * 60);
     this.vel.y *= Math.pow(effectiveFriction, dt * 60);
 
-    // Clean stop threshold
-    if (this.vel.magSq() < 0.02) {
+        if (this.vel.magSq() < 0.02) {
       this.vel.set(0, 0);
     }
   }
@@ -246,18 +233,18 @@ export class Ball {
 
     const r = this.radius;
 
-    // 1. Drop shadow (matching prototype: ellipse(2, 3, R, R*0.9, rgba(0,0,0,0.35)))
+    // 1. Sombra cartoon projetada no feltro
     ctx.beginPath();
-    ctx.ellipse(2, 3, r, r * 0.9, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.ellipse(2.5, 3.5, r, r * 0.92, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.58)';
     ctx.fill();
 
-    // 2. Draw active enhancement aura/perimeter
+    // 2. Efeito de enhancement (se houver)
     if (this.enhancement) {
       this.enhancement.drawEffect(ctx, this);
     }
 
-    // 3. Ball Base Color
+    // 3. Cor base da bola
     let baseColor = this.color;
     if (this.enhancement) {
       if (this.enhancement.id === 'sap') baseColor = '#5fae3a';
@@ -271,11 +258,12 @@ export class Ball {
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
 
-    if (this.isStripe && !this.enhancement) {
-      // 3D Rotating Stripe! Uses sphere local Y axis to orient the central band
+    if (this.isStripe) {
+      // Base branca
       ctx.fillStyle = '#ffffff';
       ctx.fill();
 
+      // Faixa colorida rotacionada em 3D
       ctx.save();
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
@@ -293,10 +281,9 @@ export class Ball {
       ctx.fill();
     }
 
-    // 4. True 3D Sphere Number with Perspective Foreshortening & Settle Facing Up
+    // 4. Círculo branco do número (cartoon plano) e número
     if (!this.isCue) {
       const [px, py, pz] = this.M[2];
-      // Only render number when it is rotated towards the camera
       if (pz > 0.35) {
         ctx.save();
         const numAlpha = Math.min(1, Math.max(0, (pz - 0.35) * 4));
@@ -305,57 +292,44 @@ export class Ball {
 
         const a = Math.atan2(py, px);
         ctx.rotate(a);
-        ctx.scale(pz, 1); // Real spherical foreshortening as the ball rotates!
+        ctx.scale(pz, 1);
         ctx.rotate(-a);
 
-        // White circle background on sphere surface
+        // Círculo branco do número (sem borda preta)
+        const badgeR = r * 0.48;
         ctx.beginPath();
-        ctx.arc(0, 0, r * 0.46, 0, Math.PI * 2);
+        ctx.arc(0, 0, badgeR, 0, Math.PI * 2);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
 
-        // Distinct number text
+        // Número em fonte Oswald / Impact bold
         ctx.fillStyle = '#0b0710';
-        ctx.font = `bold ${Math.round(r * 0.65)}px Oswald, Impact, sans-serif`;
+        ctx.font = `700 ${Math.round(r * 0.68)}px Oswald, Impact, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
         const displayText = this.enhancement?.id === '67' ? '67' : this.number.toString();
         ctx.fillText(displayText, 0, 0.6);
 
-        // Underline for 6 and 9
         if (this.number === 6 || this.number === 9) {
-          ctx.fillRect(-2.5, 4.2, 5, 1.2);
+          ctx.fillRect(-2.5, 4.2, 5, 1.3);
         }
         ctx.restore();
       }
     } else {
-      // Cue ball: measles red dots rotating in real 3D!
       const dots = [this.M[0], this.M[1], this.M[2]];
       for (const d of dots) {
         if (d[2] > 0.1) {
           ctx.beginPath();
-          ctx.arc(d[0] * r * 0.72, d[1] * r * 0.72, 1.6 * Math.max(0.4, d[2]), 0, Math.PI * 2);
+          ctx.arc(d[0] * r * 0.72, d[1] * r * 0.72, 1.8 * Math.max(0.4, d[2]), 0, Math.PI * 2);
           ctx.fillStyle = '#d6322a';
           ctx.fill();
         }
       }
     }
 
-    // 5. Specular 3D Spherical Light Gradient / Gloss
-    const highlight = ctx.createRadialGradient(-r * 0.35, -r * 0.35, 1, 0, 0, r);
-    highlight.addColorStop(0, 'rgba(255, 255, 255, 0.75)');
-    highlight.addColorStop(0.3, 'rgba(255, 255, 255, 0.16)');
-    highlight.addColorStop(0.75, 'rgba(0, 0, 0, 0)');
-    highlight.addColorStop(1, 'rgba(0, 0, 0, 0.55)');
-
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fillStyle = highlight;
-    ctx.fill();
-
-    // 6. Distinct dark border #0b0710 (1.4px) matching prototype
-    ctx.lineWidth = 1.4;
+    // 6. Borda preta grossa externa estilo cartoon Balatro
+    ctx.lineWidth = 2.8;
     ctx.strokeStyle = '#0b0710';
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
