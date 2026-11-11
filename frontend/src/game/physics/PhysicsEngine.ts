@@ -227,15 +227,15 @@ export class PhysicsEngine {
         const dy = pocket.y - ball.pos.y;
         const dist = Math.hypot(dx, dy);
 
-                const suctionRadius = pocket.radius + 22;
+                const suctionRadius = pocket.radius + 36;
         if (dist < suctionRadius && dist > 1 && !ball.isSinking) {
-          const factor = Math.pow(1 - dist / suctionRadius, 1.6);
-          const pullStrength = 0.55 * factor;
+          const factor = Math.pow(1 - dist / suctionRadius, 1.4);
+          const pullStrength = 1.25 * factor;
           ball.vel.x += (dx / dist) * pullStrength;
           ball.vel.y += (dy / dist) * pullStrength;
 
-                    ball.vel.x *= 0.985;
-          ball.vel.y *= 0.985;
+                    ball.vel.x *= 0.98;
+          ball.vel.y *= 0.98;
         }
       }
 

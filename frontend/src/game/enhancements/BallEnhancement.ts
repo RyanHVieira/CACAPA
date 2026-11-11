@@ -650,4 +650,25 @@ export class BallEnhancementCatalog {
     const all = this.getAll();
     return all.find((e) => e.id === id) || null;
   }
+
+  static getDiscoveredEnhancementIds(): Set<string> {
+    try {
+      const stored = localStorage.getItem('cacapa_discovered_enhancements');
+      if (stored) {
+        return new Set(JSON.parse(stored));
+      }
+    } catch {}
+    return new Set();
+  }
+
+  static recordDiscoveredEnhancement(id: string): void {
+    if (!id) return;
+    try {
+      const set = this.getDiscoveredEnhancementIds();
+      if (!set.has(id)) {
+        set.add(id);
+        localStorage.setItem('cacapa_discovered_enhancements', JSON.stringify([...set]));
+      }
+    } catch {}
+  }
 }

@@ -77,12 +77,36 @@ export class CardCatalog {
   static generateShopOffers(count: number = 3): Card[] {
     const offers: Card[] = [];
     for (let i = 0; i < count; i++) {
-            if (Math.random() < 0.75) {
+      if (Math.random() < 0.75) {
         offers.push(this.createRandomJoker());
       } else {
         offers.push(this.createRandomTarot());
       }
     }
     return offers;
+  }
+
+  static getAllJokers(): Card[] {
+    return this.jokerConstructors.map((Ctor) => new Ctor('Base'));
+  }
+
+  static getDiscoveredJokerIds(): Set<string> {
+    try {
+      const stored = localStorage.getItem('cacapa_discovered_jokers');
+      if (stored) {
+        return new Set(JSON.parse(stored));
+      }
+    } catch {}
+    return new Set();
+  }
+
+  static recordDiscoveredJoker(id: string): void {
+    try {
+      const set = this.getDiscoveredJokerIds();
+      if (!set.has(id)) {
+        set.add(id);
+        localStorage.setItem('cacapa_discovered_jokers', JSON.stringify([...set]));
+      }
+    } catch {}
   }
 }

@@ -1,5 +1,7 @@
 import { Card } from '../cards/Card';
 import { CacapaJokerCard } from '../cards/CacapaJokerCard';
+import { type ConsumableDef, ConsumableCatalog } from '../consumables/Consumable';
+import { BallEnhancementCatalog } from '../enhancements/BallEnhancement';
 import {
   J,
   JE,
@@ -47,6 +49,7 @@ export class ShopManager {
   public cardStock: (CacapaJokerCard | null)[] = [];
   public ballModStock: (ShopBallModOffer | null)[] = [];
   public cueStock: (CueDef | null)[] = [];
+  public consumableStock: (ConsumableDef | null)[] = [];
 
   public rerollsCount: number = 0;
   public rerollsCountShop2: number = 0;
@@ -90,6 +93,18 @@ export class ShopManager {
     this.rerollsCount = 0;
     this.generateJokers(table, ownedJokers);
     this.generateBallModStock();
+    this.generateConsumableStock();
+  }
+
+  public generateConsumableStock(): void {
+    // Oferece 2 opções de consumíveis na loja para variedade
+    const c1 = ConsumableCatalog.getRandom();
+    let c2 = ConsumableCatalog.getRandom();
+    // Tenta não duplicar se possível
+    if (c2.id === c1.id) {
+      c2 = ConsumableCatalog.getRandom();
+    }
+    this.consumableStock = [c1, c2];
   }
 
   public generateJokers(table: number, ownedJokers: Card[]): void {
@@ -125,8 +140,8 @@ export class ShopManager {
     for (let i = 0; i < 3; i++) {
       // Chances iguais de vir qualquer número de 1 a 12
       const ballNum = Math.floor(Math.random() * 12) + 1;
-      // 50% de chance de vir com ou sem listra
-      const isStripe = Math.random() < 0.5;
+      // 50% de chance de vir com ou sem listra (exceto bola 8 que NUNCA é listrada)
+      const isStripe = ballNum === 8 ? false : Math.random() < 0.5;
       // Chance de só 10% de vir com modificador
       const hasEnhancement = Math.random() < 0.10;
 
@@ -162,6 +177,7 @@ export class ShopManager {
           icon: m.icon,
           popText: m.popText,
         });
+        BallEnhancementCatalog.recordDiscoveredEnhancement(m.id);
       } else {
         // Bola normal sem modificador (90% das vezes)
         offers.push({
@@ -188,8 +204,9 @@ export class ShopManager {
     this.cueStock = availableCues.slice(0, 3);
   }
 
-  public shouldOpenTacoShop(table: number): boolean {
-    return table >= 4 && (table === 4 || Math.random() < 0.35);
+  public shouldOpenTacoShop(_table: number): boolean {
+    // Tacos agora são selecionados antes de iniciar a partida e não são alterados durante a run
+    return false;
   }
 
   public shouldOpenBallModShop(_table: number): boolean {
@@ -207,7 +224,43 @@ export class ShopManager {
     }
     this.rerollsCount++;
     this.generateJokers(table, ownedJokers);
-    return { success: true, cost, message: 'Loja de curingas atualizada!' };
+    this.generateConsumableStock();
+    return { success: true, cost, message: 'Loja de curingas e consumíveis atualizada!' };
+  }
+
+  public buyConsumable(
+    index: number,
+    playerMoney: number,
+    ownedConsumable: ConsumableDef | null
+  ): { success: boolean; consumable?: ConsumableDef; cost: number; message: string } {
+    if (index < 0 || index >= this.consumableStock.length) {
+      return { success: false, cost: 0, message: 'Consumível inválido.' };
+    }
+
+    const item = this.consumableStock[index];
+    if (!item) {
+      return { success: false, cost: 0, message: 'Item já comprado!' };
+    }
+
+    if (ownedConsumable !== null) {
+      return {
+        success: false,
+        cost: 0,
+        message: 'Espaço de consumível cheio! (Limite: 1). Use ou venda o item atual.',
+      };
+    }
+
+    if (playerMoney < item.cost) {
+      return { success: false, cost: 0, message: `Dinheiro insuficiente ($${item.cost})!` };
+    }
+
+    this.consumableStock[index] = null;
+    return {
+      success: true,
+      consumable: item,
+      cost: item.cost,
+      message: `${item.name} comprado com sucesso!`,
+    };
   }
 
   public rerollBallMods(

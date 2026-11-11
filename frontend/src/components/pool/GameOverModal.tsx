@@ -8,7 +8,7 @@ interface GameOverModalProps {
 
 export const GameOverModal: React.FC<GameOverModalProps> = ({ engine, onRestart }) => {
   const isVictory = engine.state === 'VICTORY';
-  const isFoulOut = !isVictory && engine.foulCount >= 5;
+  const isFoulOut = !isVictory && engine.foulCount >= engine.maxFouls;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -31,7 +31,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({ engine, onRestart 
           {isVictory
             ? 'Você Zerou o Caçapa!'
             : isFoulOut
-            ? 'Você Atingiu 5 Faltas!'
+            ? `Você Atingiu ${engine.maxFouls} Faltas!`
             : 'Suas Tacadas Acabaram!'}
         </h2>
 

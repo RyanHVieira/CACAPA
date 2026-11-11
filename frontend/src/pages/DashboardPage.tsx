@@ -39,9 +39,14 @@ export function DashboardPage() {
             <h2 className="text-3xl font-bold mb-6 bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
               Dashboard
             </h2>
-            <p className="text-slate-300 text-lg mb-6">
+            <p className="text-slate-300 text-lg mb-4">
               Bem-vindo, {user?.name}! Você está logado com sucesso.
             </p>
+            {user?.id && (
+              <p className="text-slate-400 mb-4 text-xs sm:text-sm font-mono">
+                ID do Administrador: <span className="text-amber-400 font-bold">{user.id}</span>
+              </p>
+            )}
             {user?.email && (
               <p className="text-slate-400 mb-6">Email: {user.email}</p>
             )}

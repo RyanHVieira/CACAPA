@@ -5,6 +5,8 @@ import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { PoolPage } from './pages/PoolPage';
 
+const VOX_USER_ID = '38921965-4c35-419f-8f02-9ab6cf86f407';
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
 
@@ -16,7 +18,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return user ? <>{children}</> : <Navigate to="/login" />;
+  return user ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -30,7 +32,33 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return user ? <Navigate to="/" /> : <>{children}</>;
+  return user ? <Navigate to="/pool" replace /> : <>{children}</>;
+}
+
+function DashboardRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const isVox = user.name?.trim().toLowerCase() === 'vox';
+  const hasVoxId = user.id?.trim().toLowerCase() === VOX_USER_ID.toLowerCase();
+
+  // Apenas o usuário vox com o id 38921965-4c35-419f-8f02-9ab6cf86f407 pode acessar
+  if (!isVox || !hasVoxId) {
+    return <Navigate to="/pool" replace />;
+  }
+
+  return <>{children}</>;
 }
 
 function AppRoutes() {
@@ -39,8 +67,9 @@ function AppRoutes() {
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
       <Route path="/pool" element={<ProtectedRoute><PoolPage /></ProtectedRoute>} />
-      <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="*" element={<Navigate to="/" />} />
+      <Route path="/dashboard" element={<DashboardRoute><DashboardPage /></DashboardRoute>} />
+      <Route path="/" element={<Navigate to="/pool" replace />} />
+      <Route path="*" element={<Navigate to="/pool" replace />} />
     </Routes>
   );
 }

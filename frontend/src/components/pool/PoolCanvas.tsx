@@ -2,15 +2,23 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import { CacapaPoolEngine } from '../../game/engine/CacapaPoolEngine';
 import { Ball } from '../../game/models/Ball';
 import { Vector2D } from '../../game/models/Vector2D';
+import { CueRenderer } from '../../game/cues/CueRenderer';
+
+export const TABLE_PAD_X = 260;
+export const TABLE_PAD_Y = 180;
+export const CANVAS_WIDTH = 1040 + TABLE_PAD_X * 2; // 1560
+export const CANVAS_HEIGHT = 560 + TABLE_PAD_Y * 2; // 920
 
 interface PoolCanvasProps {
   engine: CacapaPoolEngine;
+  zoom?: number;
   onShotFired?: () => void;
   onTableHeightChange?: (height: number) => void;
 }
 
 export const PoolCanvas: React.FC<PoolCanvasProps> = ({
   engine,
+  zoom = 1.0,
   onShotFired,
   onTableHeightChange,
 }) => {
@@ -34,8 +42,8 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     return new Vector2D(
-      (clientX - rect.left) * scaleX,
-      (clientY - rect.top) * scaleY
+      (clientX - rect.left) * scaleX - TABLE_PAD_X,
+      (clientY - rect.top) * scaleY - TABLE_PAD_Y
     );
   }, []);
 
@@ -359,7 +367,7 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
       }
 
             if (isChargingRef.current && engine.state === 'AIMING') {
-        const chargeCycleSpeed = 1.2;
+        const chargeCycleSpeed = engine.cueId === 'paciente' ? 0.6 : 1.2;
         chargeTimeRef.current += dt * chargeCycleSpeed;
 
         const cycle = chargeTimeRef.current % 2;
@@ -377,14 +385,27 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
 
       const shake = engine.particleSystem.getShakeOffset();
       ctx.save();
-      ctx.translate(shake.x, shake.y);
+      ctx.translate(TABLE_PAD_X + shake.x, TABLE_PAD_Y + shake.y);
+
+      // Sombra projetada da mesa no piso do salão
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(0, 10, engine.table.width, engine.table.height, 22);
+      } else {
+        ctx.rect(0, 10, engine.table.width, engine.table.height);
+      }
+      ctx.fill();
+      ctx.restore();
 
             engine.table.draw(ctx, engine.ante - 1, engine.particleSystem.shake, time);
 
       const cueP = isChargingRef.current ? currentPowerRef.current : 0;
       const currentAngle = aimAngleRef.current;
 
-            if (engine.state === 'AIMING' && engine.cueBall && !engine.cueBall.isPocketed) {
+            // Linha de mira / projeção da trajetória
+      if (engine.state === 'AIMING' && engine.cueBall && !engine.cueBall.isPocketed) {
         const trajectory = calculateAimTrajectory(
           engine.cueBall.pos,
           currentAngle,
@@ -412,7 +433,8 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-                if (trajectory.hitBall && trajectory.deflectionDir) {
+                // Efeito causado na outra bola (seta e direção do impacto) - APENAS no Taco de Mauá!
+        if (engine.cueId === 'maua' && trajectory.hitBall && trajectory.deflectionDir) {
           const arrowLen = 35 + cueP * 25;
           const targetStart = trajectory.hitBall.pos;
           const targetEnd = targetStart.add(trajectory.deflectionDir.mult(arrowLen));
@@ -446,7 +468,8 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
         ball.draw(ctx);
       }
 
-            if (engine.state === 'AIMING' && engine.cueBall && !engine.cueBall.isPocketed) {
+            // Desenho do Taco
+      if (engine.state === 'AIMING' && engine.cueBall && !engine.cueBall.isPocketed) {
         ctx.save();
         ctx.translate(engine.cueBall.pos.x, engine.cueBall.pos.y);
         ctx.rotate(currentAngle + Math.PI);
@@ -454,35 +477,8 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
         const cuePullBack = 12 + cueP * 75;
         ctx.translate(engine.cueBall.radius + cuePullBack, 0);
 
-        ctx.lineCap = 'round';
-
-                ctx.strokeStyle = '#0b0710';
-        ctx.lineWidth = 9;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(280, 0);
-        ctx.stroke();
-
-                ctx.strokeStyle = '#e8c48a';
-        ctx.lineWidth = 5;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(280, 0);
-        ctx.stroke();
-
-                ctx.strokeStyle = '#78350f';
-        ctx.lineWidth = 5.5;
-        ctx.beginPath();
-        ctx.moveTo(150, 0);
-        ctx.lineTo(280, 0);
-        ctx.stroke();
-
-                ctx.strokeStyle = '#4aa3ff';
-        ctx.lineWidth = 5;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(8, 0);
-        ctx.stroke();
+        // Desenha o sprite customizado do taco equipado
+        CueRenderer.drawCueStick(ctx, engine.cueId || 'iniciante', 280, 0);
 
         ctx.restore();
       }
@@ -499,7 +495,8 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
             engine.particleSystem.draw(ctx);
 
             if (tallyProgressRef.current > 0 && engine.lastChips > 0 && engine.lastMult > 0) {
-        tallyProgressRef.current -= 0.022;
+        // Contagem e exibição da pontuação na tela em ritmo agradável (duração ~1.8s)
+        tallyProgressRef.current -= 0.009;
         const progress = 1.0 - tallyProgressRef.current;
         renderCenterTally(
           ctx,
@@ -548,19 +545,23 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full max-h-full flex flex-col items-center justify-center select-none py-1 gap-1"
+      className="relative w-full h-full max-h-full flex flex-col items-center justify-center select-none py-1 gap-1 overflow-visible"
     >
-            <div className="flex-1 min-h-0 w-full flex items-center justify-center">
+      <div className="flex-1 min-h-0 w-full flex items-center justify-center overflow-visible">
         <canvas
           ref={canvasRef}
-          width={1040}
-          height={560}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
           onPointerDown={handlePointerDown}
-          className="max-w-full max-h-full w-auto h-auto aspect-[1040/560] object-contain block cursor-crosshair touch-none rounded-2xl"
+          style={{
+            transform: `scale(${zoom})`,
+            transformOrigin: 'center center',
+          }}
+          className="max-w-full max-h-full w-auto h-auto aspect-[1560/920] object-contain block cursor-crosshair touch-none transition-transform duration-100 ease-out"
         />
       </div>
 
-            <div className="w-[85%] max-w-[850px] h-3 sm:h-3.5 bg-[#1b1226] border-2 border-[#0b0710] rounded-full p-0.5 flex-shrink-0 relative overflow-hidden">
+            <div className="w-[85%] max-w-[850px] h-3 sm:h-3.5 bg-[#1b1226] border-2 border-[#0b0710] rounded-full p-0.5 flex-shrink-0 relative overflow-hidden z-20 shadow-md pointer-events-none">
         <div
           ref={powerFillBarRef}
           className="h-full rounded-full transition-none"

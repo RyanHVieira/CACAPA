@@ -34,7 +34,7 @@ export function RegisterPage() {
 
     try {
       await register(name.trim(), password);
-      navigate('/');
+      navigate('/pool');
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { message?: string } } };
       setError(axiosError.response?.data?.message || 'Erro ao cadastrar');

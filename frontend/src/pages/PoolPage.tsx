@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { CacapaPoolEngine } from '../game/engine/CacapaPoolEngine';
 import { PoolCanvas } from '../components/pool/PoolCanvas';
 import { CacapaShop } from '../components/pool/CacapaShop';
@@ -8,8 +9,14 @@ import { PoolHelpModal } from '../components/pool/PoolHelpModal';
 import { BallRackModal } from '../components/pool/BallRackModal';
 import { CacapaBackground } from '../components/pool/CacapaBackground';
 import { CacapaJokerSlot } from '../components/pool/CacapaJokerSlot';
+import { ConsumableSlot } from '../components/pool/ConsumableSlot';
+import { ConsumableTargetModal } from '../components/pool/ConsumableTargetModal';
 import { BossIntroModal } from '../components/pool/BossIntroModal';
 import { TitleScreenModal } from '../components/pool/TitleScreenModal';
+import { JokerCollectionModal } from '../components/pool/JokerCollectionModal';
+import { EncyclopediaModal, type EncyclopediaTab } from '../components/pool/EncyclopediaModal';
+import { AdminDebugModal } from '../components/pool/AdminDebugModal';
+import { CueManager } from '../game/cues/CueManager';
 import { CRTEffects } from '../components/pool/CRTEffects';
 import { AMBIENT_THEMES } from '../game/scenes/TableScenes';
 
@@ -19,6 +26,10 @@ const hScale = (px: number) => `${Math.max(1, Math.round(px * ASIDE_HEIGHT_SCALE
 
 export function PoolPage() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const isVox =
+    user?.name?.trim().toLowerCase() === 'vox' &&
+    user?.id?.trim().toLowerCase() === '38921965-4c35-419f-8f02-9ab6cf86f407';
 
     const [engine] = useState(() => new CacapaPoolEngine());
 
@@ -32,11 +43,138 @@ export function PoolPage() {
   const [isMusicMuted, setIsMusicMuted] = useState(() => !engine.sound.musicEnabled);
   const [showShop, setShowShop] = useState(false);
   const [isCrtEnabled, setIsCrtEnabled] = useState(true);
-  const [isTitleOpen, setIsTitleOpen] = useState(false);
+  const [isTitleOpen, setIsTitleOpen] = useState(true);
   const [isBossIntroOpen, setIsBossIntroOpen] = useState(false);
   const [lastSeenBossAnte, setLastSeenBossAnte] = useState<number | null>(null);
   const [activatingJokerIdx, setActivatingJokerIdx] = useState<number | null>(null);
   const [scorePop, setScorePop] = useState(false);
+  const [isJokerCollectionOpen, setIsJokerCollectionOpen] = useState(false);
+  const [isEncyclopediaOpen, setIsEncyclopediaOpen] = useState(false);
+  const [isConsumableTargetModalOpen, setIsConsumableTargetModalOpen] = useState(false);
+  const [encyclopediaTab, setEncyclopediaTab] = useState<EncyclopediaTab>('cues');
+  const [selectedCueId, setSelectedCueId] = useState<string>(() => CueManager.getSelectedCueId());
+  const [tableZoom, setTableZoom] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('cacapa_table_zoom');
+      if (saved) {
+        const val = parseFloat(saved);
+        if (!isNaN(val) && val >= 0.8 && val <= 1.5) return val;
+      }
+    } catch {}
+    return 1.0;
+  });
+
+  const [selectedBgTheme, setSelectedBgTheme] = useState<string>(() => {
+    try {
+      return localStorage.getItem('cacapa_selected_bg_theme') || 'auto';
+    } catch {
+      return 'auto';
+    }
+  });
+
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const konamiIndexRef = useRef<number>(0);
+
+  // Código Konami sem B A (apenas as setas: Cima Cima Baixo Baixo Esquerda Direita Esquerda Direita)
+  // Restrito exclusivamente ao usuário Vox com o id 38921965-4c35-419f-8f02-9ab6cf86f407
+  useEffect(() => {
+    const KONAMI_ARROWS = [
+      'ArrowUp',
+      'ArrowUp',
+      'ArrowDown',
+      'ArrowDown',
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowLeft',
+      'ArrowRight',
+    ];
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.key === 'Escape' && isAdminOpen) {
+        setIsAdminOpen(false);
+        return;
+      }
+
+      if (e.key === KONAMI_ARROWS[konamiIndexRef.current]) {
+        konamiIndexRef.current++;
+        if (konamiIndexRef.current === KONAMI_ARROWS.length) {
+          konamiIndexRef.current = 0;
+          const isVoxAdmin =
+            user?.name?.trim().toLowerCase() === 'vox' &&
+            user?.id?.trim().toLowerCase() === '38921965-4c35-419f-8f02-9ab6cf86f407';
+
+          if (isVoxAdmin) {
+            setIsAdminOpen((prev) => !prev);
+            try {
+              engine.sound.playWin();
+            } catch {}
+          }
+        }
+      } else {
+        konamiIndexRef.current = e.key === KONAMI_ARROWS[0] ? 1 : 0;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [user, engine, isAdminOpen]);
+
+  const handleCycleBackgroundTheme = () => {
+    const highest = CueManager.getHighestStageReached();
+    const availableOptions: string[] = ['auto'];
+    for (let i = 0; i <= highest && i < AMBIENT_THEMES.length; i++) {
+      availableOptions.push(i.toString());
+    }
+
+    const currentIdx = availableOptions.indexOf(selectedBgTheme);
+    const nextIdx = (currentIdx + 1) % availableOptions.length;
+    const nextVal = availableOptions[nextIdx];
+
+    setSelectedBgTheme(nextVal);
+    try {
+      localStorage.setItem('cacapa_selected_bg_theme', nextVal);
+    } catch {}
+    rerender();
+  };
+
+  const getBgThemeLabel = () => {
+    const defaultIdx = Math.max(0, engine.ante - 1) % AMBIENT_THEMES.length;
+    if (selectedBgTheme === 'auto') {
+      return `Automático (Mesa ${defaultIdx + 1})`;
+    }
+    const idx = parseInt(selectedBgTheme, 10);
+    if (!isNaN(idx) && AMBIENT_THEMES[idx]) {
+      return `Mesa ${idx + 1}: ${AMBIENT_THEMES[idx].title}`;
+    }
+    return 'Automático';
+  };
+
+  const handleZoomChange = (newZoom: number) => {
+    setTableZoom(newZoom);
+    try {
+      localStorage.setItem('cacapa_table_zoom', newZoom.toString());
+    } catch {}
+  };
+
+  const handleStartGame = (cueIdToUse?: string) => {
+    const cueId = cueIdToUse || CueManager.getSelectedCueId() || selectedCueId || 'iniciante';
+    setSelectedCueId(cueId);
+    CueManager.setSelectedCueId(cueId);
+    engine.startNewGame(cueId);
+    setShowShop(false);
+    setIsTitleOpen(false);
+    rerender();
+  };
 
     useEffect(() => {
     if (engine.sound.musicEnabled) {
@@ -57,7 +195,7 @@ export function PoolPage() {
   useEffect(() => {
     engine.onShotScored = () => {
       setScorePop(true);
-      setTimeout(() => setScorePop(false), 350);
+      setTimeout(() => setScorePop(false), 750);
 
             if (engine.ownedJokers.length > 0) {
         let idx = 0;
@@ -83,13 +221,11 @@ export function PoolPage() {
     }
   }, [engine.blindType, engine.ante, lastSeenBossAnte]);
 
-    const handleReorderJokers = (fromIdx: number, toIdx: number) => {
+  const handleReorderJokers = (fromIdx: number, toIdx: number) => {
     if (fromIdx === toIdx) return;
-    const jokers = [...engine.ownedJokers];
-    const [moved] = jokers.splice(fromIdx, 1);
-    if (moved) {
-      jokers.splice(toIdx, 0, moved);
-      engine.ownedJokers = jokers;
+    if (engine.areBallsMoving()) return;
+    const ok = engine.reorderJokers(fromIdx, toIdx);
+    if (ok) {
       rerender();
     }
   };
@@ -101,6 +237,28 @@ export function PoolPage() {
     engine.money += sellValue;
     engine.ownedJokers.splice(idx, 1);
     engine.sound.playBuy();
+    rerender();
+  };
+
+  const handleUseConsumable = () => {
+    const cons = engine.ownedConsumable;
+    if (!cons) return;
+    if (cons.targetType === 'ball') {
+      setIsConsumableTargetModalOpen(true);
+    } else {
+      engine.useConsumable();
+      rerender();
+    }
+  };
+
+  const handleSelectBallTarget = (ballNumber: number) => {
+    setIsConsumableTargetModalOpen(false);
+    engine.useConsumable(ballNumber);
+    rerender();
+  };
+
+  const handleSellConsumable = () => {
+    engine.sellConsumable();
     rerender();
   };
 
@@ -161,7 +319,7 @@ export function PoolPage() {
         />
 
                 {isMenuOpen && (
-          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-150 select-none font-cacapa">
+          <div className="fixed inset-0 z-[80] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-150 select-none font-cacapa">
             <div className="w-full max-w-lg sm:max-w-xl bg-[#171d22] border-[5px] border-[#0b0710] shadow-[0_10px_0_rgba(0,0,0,0.6)] rounded-3xl p-6 sm:p-8 flex flex-col gap-3 max-h-[92vh] overflow-y-auto">
               <div className="flex items-center justify-between pb-3 border-b-2 border-[#0b0710]">
                 <h3 className="text-xl sm:text-2xl font-black text-[#f2b632] uppercase tracking-wider cacapa-stroke-sm flex items-center gap-2">
@@ -176,6 +334,18 @@ export function PoolPage() {
               </div>
 
               <div className="flex flex-col gap-2 py-1 text-sm sm:text-base">
+                <button
+                  onClick={() => {
+                    setEncyclopediaTab('jokers');
+                    setIsEncyclopediaOpen(true);
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#232b30] hover:bg-[#2d373e] text-[#ffd36a] font-black flex items-center gap-3.5 border-2 border-[#0b0710] cursor-pointer transition-colors active:scale-98"
+                >
+                  <span className="text-2xl">📖</span>
+                  <span>Enciclopédia & Compêndio</span>
+                </button>
+
                 <button
                   onClick={() => {
                     setIsBallRackOpen(true);
@@ -206,6 +376,42 @@ export function PoolPage() {
                   <span>{isCrtEnabled ? 'Efeito CRT: LIGADO' : 'Efeito CRT: DESLIGADO'}</span>
                 </button>
 
+                {/* SLIDER DE ZOOM DA MESA */}
+                <div className="w-full px-4 py-3 sm:py-3.5 rounded-2xl bg-[#232b30] border-2 border-[#0b0710] flex flex-col gap-2 select-none">
+                  <div className="flex items-center justify-between text-sm sm:text-base font-black text-[#9ff1ff]">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-2xl">🔍</span>
+                      <span>Zoom da Mesa</span>
+                    </div>
+                    <span className="bg-[#12181a] px-2.5 py-0.5 rounded-lg border border-[#0b0710] text-[#f2b632] cacapa-stroke-sm">
+                      {Math.round(tableZoom * 100)}%
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-[#9fb4a8] font-bold">80%</span>
+                    <input
+                      type="range"
+                      min="0.8"
+                      max="1.5"
+                      step="0.05"
+                      value={tableZoom}
+                      onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
+                      className="flex-1 h-2.5 bg-[#12181a] rounded-lg appearance-none cursor-pointer accent-[#2f86ff] border border-[#0b0710]"
+                    />
+                    <span className="text-xs text-[#9fb4a8] font-bold">150%</span>
+                    {tableZoom !== 1.0 && (
+                      <button
+                        onClick={() => handleZoomChange(1.0)}
+                        className="px-2 py-0.5 text-xs font-black bg-[#1b2427] hover:bg-[#2a343a] text-slate-300 rounded border border-[#0b0710] cursor-pointer"
+                        title="Restaurar zoom padrão para 100%"
+                      >
+                        100%
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 <button
                   onClick={handleToggleSound}
                   className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#232b30] hover:bg-[#2d373e] text-white font-black flex items-center gap-3.5 border-2 border-[#0b0710] cursor-pointer transition-colors active:scale-98"
@@ -223,6 +429,20 @@ export function PoolPage() {
                 </button>
 
                 <button
+                  onClick={handleCycleBackgroundTheme}
+                  className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#232b30] hover:bg-[#2d373e] text-white font-black flex items-center justify-between border-2 border-[#0b0710] cursor-pointer transition-colors active:scale-98"
+                  title="Alternar entre os temas de fundo das fases que você já liberou"
+                >
+                  <div className="flex items-center gap-3.5">
+                    <span className="text-2xl">🎨</span>
+                    <span>Tema de fundo:</span>
+                  </div>
+                  <span className="bg-[#12181a] px-3 py-1 rounded-xl border border-[#0b0710] text-[#f2b632] text-xs sm:text-sm font-black cacapa-stroke-sm truncate max-w-[210px]">
+                    {getBgThemeLabel()}
+                  </span>
+                </button>
+
+                <button
                   onClick={() => {
                     setIsHelpOpen(true);
                     setIsMenuOpen(false);
@@ -237,23 +457,55 @@ export function PoolPage() {
 
                 <button
                   onClick={() => {
-                    engine.startNewGame();
                     setIsMenuOpen(false);
-                    setShowShop(false);
-                    rerender();
+                    setIsTitleOpen(true);
                   }}
                   className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl hover:bg-[#e0392b]/20 text-[#ff5a4a] font-black flex items-center gap-3.5 border-2 border-transparent hover:border-[#e0392b]/40 cursor-pointer transition-colors active:scale-98"
                 >
                   <span className="text-2xl">🔄</span>
-                  <span>Reiniciar Partida</span>
+                  <span>Voltar ao Menu Principal</span>
                 </button>
 
+                {isVox && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setIsAdminOpen(true);
+                      }}
+                      className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#4d1627] hover:bg-[#681e35] text-[#ffd36a] font-black flex items-center justify-between border-2 border-[#b52a4e] cursor-pointer transition-colors active:scale-98"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <span className="text-2xl">🛠️</span>
+                        <span>Painel Debug & Admin</span>
+                      </div>
+                      <span className="text-[10px] bg-black/40 px-2 py-0.5 rounded font-mono text-slate-300">
+                        ↑↑↓↓←→←→
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        navigate('/dashboard');
+                      }}
+                      className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#3b1d60] hover:bg-[#522986] text-[#ffd36a] font-black flex items-center gap-3.5 border-2 border-[#8b3dff] cursor-pointer transition-colors active:scale-98"
+                    >
+                      <span className="text-2xl">📊</span>
+                      <span>Painel Vox (/dashboard)</span>
+                    </button>
+                  </>
+                )}
+
                 <button
-                  onClick={() => navigate('/')}
+                  onClick={() => {
+                    logout();
+                    navigate('/login');
+                  }}
                   className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl hover:bg-[#2d373e] text-slate-400 font-black flex items-center gap-3.5 border-2 border-transparent cursor-pointer transition-colors active:scale-98"
                 >
-                  <span className="text-2xl">🏠</span>
-                  <span>Sair p/ Início</span>
+                  <span className="text-2xl">🚪</span>
+                  <span>Sair da Conta ({user?.name || 'Desconectar'})</span>
                 </button>
               </div>
 
@@ -261,7 +513,7 @@ export function PoolPage() {
                 onClick={() => setIsMenuOpen(false)}
                 className="w-full py-4 px-6 rounded-2xl bg-[#2f86ff] hover:bg-[#4aa3ff] border-[4px] border-[#0b0710] shadow-[0_4px_0_rgba(0,0,0,0.45)] text-white font-black text-base sm:text-lg uppercase tracking-wider transition-all active:scale-95 cursor-pointer cacapa-stroke-sm mt-2"
               >
-                VOLTAR AO JOGO
+                {isTitleOpen ? 'VOLTAR AO MENU' : 'VOLTAR AO JOGO'}
               </button>
             </div>
           </div>
@@ -279,13 +531,34 @@ export function PoolPage() {
           onClose={() => setIsHelpOpen(false)}
         />
 
+        <JokerCollectionModal
+          isOpen={isJokerCollectionOpen}
+          onClose={() => setIsJokerCollectionOpen(false)}
+        />
+
+        <AdminDebugModal
+          isOpen={isAdminOpen}
+          onClose={() => setIsAdminOpen(false)}
+          engine={engine}
+          onUpdate={rerender}
+          user={user}
+        />
+
         <CRTEffects enabled={isCrtEnabled} intensity={1.0} />
       </div>
     );
   }
 
-  const tableIndex = Math.max(0, engine.ante - 1) % AMBIENT_THEMES.length;
-  const currentTheme = AMBIENT_THEMES[tableIndex];
+  const highestStageReached = CueManager.getHighestStageReached();
+  const defaultTableIndex = Math.max(0, engine.ante - 1) % AMBIENT_THEMES.length;
+  let effectiveTableIndex = defaultTableIndex;
+  if (selectedBgTheme !== 'auto') {
+    const parsed = parseInt(selectedBgTheme, 10);
+    if (!isNaN(parsed) && parsed >= 0 && parsed <= highestStageReached) {
+      effectiveTableIndex = parsed % AMBIENT_THEMES.length;
+    }
+  }
+  const currentTheme = AMBIENT_THEMES[effectiveTableIndex];
   const currentBossRule = engine.currentBossRule;
 
     const multTiers = [
@@ -310,81 +583,101 @@ export function PoolPage() {
     return (
     <div className="w-screen h-screen max-h-screen overflow-hidden bg-[#0b0710] text-slate-100 flex items-center justify-center p-0 select-none font-sans relative">
       <div id="w" className={`relative flex p-1.5 sm:p-2 xl:p-2.5 gap-2 sm:gap-2.5 z-10 ${!isCrtEnabled ? 'nocrt' : ''}`}>
-                <CacapaBackground tableIndex={tableIndex} />
+                <CacapaBackground tableIndex={effectiveTableIndex} />
 
                 <aside
-          className="w-[23%] min-w-[240px] xl:min-w-[280px] max-w-[340px] flex-shrink-0 flex flex-col justify-center h-full select-none z-20 font-cacapa"
-          style={{ gap: hScale(7) }}
+          className="w-[25%] min-w-[260px] xl:min-w-[300px] max-w-[360px] flex-shrink-0 flex flex-col justify-center h-full select-none z-30 relative font-cacapa"
+          style={{ gap: hScale(6) }}
         >
-          {/* TOP ANTE & SCORE CARDS */}
-          <div className="flex flex-col flex-shrink-0" style={{ gap: hScale(5) }}>
-            {/* ANTE / BOSS INFO */}
-            <div className="bg-[#1b2427] border-[4px] border-[#0b0710] rounded-2xl overflow-hidden flex flex-col shadow-[0_4px_0_rgba(0,0,0,0.5)]">
-              <div
-                className={`px-3 text-center border-b-[3px] border-[#0b0710] ${
-                  engine.blindType === 'Boss Blind'
-                    ? 'bg-[#cf3226]'
-                    : 'bg-[#2563eb]'
-                }`}
-                style={{ paddingTop: hScale(4), paddingBottom: hScale(4) }}
-              >
-                <h3 className="text-base sm:text-lg xl:text-xl font-black text-white uppercase tracking-wider cacapa-stroke leading-tight truncate">
-                  {currentBossRule?.name || currentTheme?.title || `Mesa ${engine.ante}`}
-                </h3>
-                <span className="text-xs sm:text-sm text-white/95 font-bold block leading-none mt-1 truncate">
-                  {currentBossRule?.headers?.[0] || `Mesa ${engine.ante} de 10`}
-                </span>
+          {/* TOP UNIFIED STAGE & SCORE / META CARD */}
+          <div className="bg-[#1b2427] border-[4px] border-[#0b0710] rounded-2xl overflow-hidden flex flex-col shadow-[0_4px_0_rgba(0,0,0,0.5)] flex-shrink-0">
+            {/* 1. TÍTULO DA FASE LOGO EM CIMA */}
+            <div
+              className={`px-3 text-center border-b-[3px] border-[#0b0710] ${
+                engine.blindType === 'Boss Blind'
+                  ? 'bg-[#cf3226]'
+                  : 'bg-[#2563eb]'
+              }`}
+              style={{ paddingTop: hScale(4), paddingBottom: hScale(4) }}
+            >
+              <h3 className="text-lg sm:text-xl xl:text-2xl font-black text-white uppercase tracking-wider cacapa-stroke leading-tight truncate">
+                {currentBossRule?.name || currentTheme?.title || `Mesa ${engine.ante}`}
+              </h3>
+              <span className="text-sm sm:text-base text-white/95 font-bold block leading-none mt-1 truncate">
+                {currentBossRule?.headers?.[0] || `Mesa ${engine.ante} de 10`}
+              </span>
+            </div>
+
+            {/* 2. PONTUAÇÃO / META JUNTOS */}
+            <div
+              className="bg-[#14181c] px-3.5 border-b-[3px] border-[#0b0710] flex flex-col gap-1"
+              style={{ paddingTop: hScale(5), paddingBottom: hScale(6) }}
+            >
+              {/* Labels & Recompensa */}
+              <div className="flex items-center justify-between text-xs sm:text-sm font-black uppercase">
+                <div className="flex items-center gap-1.5 text-[#9ff1ff]">
+                  <span className="text-sm sm:text-base">✳</span>
+                  <span>Pontuação / Meta</span>
+                </div>
+                <div className="text-xs sm:text-sm text-[#f2b632] font-black">
+                  Recompensa: <span className="text-white">${3 + Math.max(0, engine.shotsRemaining)}</span>
+                </div>
               </div>
 
-              <div
-                className="px-2.5 flex items-center gap-2.5 bg-[#171d22]"
-                style={{ paddingTop: hScale(7), paddingBottom: hScale(7) }}
-              >
-                <div
-                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-[3px] border-[#0b0710] flex items-center justify-center flex-shrink-0 shadow-inner ${
-                    engine.blindType === 'Boss Blind'
-                      ? 'bg-[#991b1b] text-red-200'
-                      : 'bg-[#1e3a8a] text-blue-200'
-                  }`}
-                >
-                  <span className="font-black text-2xl sm:text-3xl cacapa-stroke">
-                    {engine.blindType === 'Boss Blind' ? '☠' : '🎱'}
-                  </span>
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <span className="text-xs sm:text-sm font-bold text-[#9fb4a8] block leading-none uppercase">
-                    Meta
-                  </span>
-                  <div className="text-2xl sm:text-3xl font-black text-[#ff5a4a] leading-tight flex items-center gap-1.5 cacapa-stroke my-0.5">
-                    <span className="text-sm sm:text-base">✳</span>
-                    <span>{engine.targetScore.toLocaleString()}</span>
-                  </div>
-                  <span className="text-xs sm:text-sm font-bold text-[#f2b632] block leading-none">
-                    Recompensa: <span className="font-black text-sm sm:text-base">${3 + Math.max(0, engine.shotsRemaining)}</span>
-                  </span>
-                </div>
+              {/* Placar Pontuação / Meta em destaque */}
+              <div className="flex items-center justify-center gap-2 sm:gap-3 my-0.5">
+                <span className="text-3xl sm:text-4xl xl:text-5xl font-black text-white cacapa-stroke tracking-tight leading-none">
+                  {engine.currentScore.toLocaleString()}
+                </span>
+                <span className="text-2xl sm:text-3xl xl:text-4xl font-black text-[#9fb4a8]/50 leading-none">
+                  /
+                </span>
+                <span className="text-2xl sm:text-3xl xl:text-4xl font-black text-[#ff5a4a] cacapa-stroke tracking-tight leading-none">
+                  {engine.targetScore.toLocaleString()}
+                </span>
               </div>
             </div>
 
-            {/* PONTUAÇÃO ATUAL */}
-            <div className="bg-[#1b2427] border-[4px] border-[#0b0710] rounded-2xl overflow-hidden flex items-stretch shadow-[0_4px_0_rgba(0,0,0,0.5)]">
-              <div
-                className="bg-[#cf3226] border-r-[3px] border-[#0b0710] px-3 flex flex-col items-center justify-center text-center flex-shrink-0 min-w-[85px] sm:min-w-[95px]"
-                style={{ paddingTop: hScale(5), paddingBottom: hScale(5) }}
-              >
-                <span className="text-xs sm:text-sm xl:text-base font-black text-white uppercase leading-none cacapa-stroke-sm">
-                  Pontuação
+            {/* 3. FICHAS × MULTI */}
+            <div
+              className="bg-[#171d22] px-3 flex flex-col gap-1.5"
+              style={{ paddingTop: hScale(5), paddingBottom: hScale(6) }}
+            >
+              <div className="flex items-center justify-between px-1">
+                <span className="text-base sm:text-lg xl:text-xl font-black text-white cacapa-stroke truncate">
+                  {engine.lastHandName || 'Tacada'}
+                </span>
+                <span className="text-xs sm:text-sm font-black text-[#38bdf8] bg-[#0c2a44] px-2 py-0.5 rounded-lg border border-[#38bdf8]/50">
+                  lvl.1
                 </span>
               </div>
-              <div
-                className="flex-1 bg-[#14181c] px-3 flex items-center justify-center gap-2 min-w-0"
-                style={{ paddingTop: hScale(5), paddingBottom: hScale(5) }}
-              >
-                <span className="text-base sm:text-xl text-white/75 font-black">✳</span>
-                <span className="text-3xl sm:text-4xl xl:text-5xl font-black text-white tracking-tight cacapa-stroke leading-none">
-                  {engine.currentScore.toLocaleString()}
+
+              <div className="flex items-center justify-center gap-2">
+                <div
+                  className={`flex-1 bg-[#0080ff] border-[3px] border-[#0b0710] rounded-xl px-2 py-1 text-center transition-transform ${
+                    scorePop ? 'animate-counter-pop' : ''
+                  }`}
+                  style={{ paddingTop: hScale(4), paddingBottom: hScale(4) }}
+                >
+                  <span className="text-2xl sm:text-3xl xl:text-4xl font-black text-white leading-none block cacapa-stroke">
+                    {engine.lastChips}
+                  </span>
+                </div>
+
+                <span className="text-[#ff3b30] font-black text-2xl sm:text-3xl xl:text-4xl px-1 cacapa-stroke">
+                  ×
                 </span>
+
+                <div
+                  className={`flex-1 ${multStyle.bg} border-[3px] border-[#0b0710] rounded-xl px-2 py-1 text-center transition-transform ${
+                    scorePop ? 'animate-counter-pop' : ''
+                  }`}
+                  style={{ paddingTop: hScale(4), paddingBottom: hScale(4) }}
+                >
+                  <span className="text-2xl sm:text-3xl xl:text-4xl font-black text-white leading-none block cacapa-stroke">
+                    {engine.lastMult}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -392,56 +685,13 @@ export function PoolPage() {
           {/* GAME CONTROLS & STATS BOARD */}
           <div className="flex flex-col gap-0 flex-shrink-0">
             <div
-              className="bg-[#171d22] border-[4px] border-[#0b0710] rounded-2xl px-2.5 sm:px-3 flex flex-col font-cacapa select-none overflow-hidden shadow-[0_5px_0_rgba(0,0,0,0.5)]"
+              className="bg-[#171d22] border-[4px] border-[#0b0710] rounded-2xl px-3 flex flex-col font-cacapa select-none overflow-hidden shadow-[0_5px_0_rgba(0,0,0,0.5)]"
               style={{
-                paddingTop: hScale(8),
-                paddingBottom: hScale(8),
-                gap: hScale(6),
+                paddingTop: hScale(7),
+                paddingBottom: hScale(7),
+                gap: hScale(5),
               }}
             >
-              {/* LAST HAND + CHIPS × MULT */}
-              <div
-                className="bg-[#1b2427] border-[3px] border-[#0b0710] rounded-xl px-2.5 flex flex-col gap-1.5 shadow-inner"
-                style={{ paddingTop: hScale(6), paddingBottom: hScale(6) }}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <span className="text-sm sm:text-base font-black text-white cacapa-stroke truncate">
-                    {engine.lastHandName || 'Tacada'}
-                  </span>
-                  <span className="text-xs font-black text-[#38bdf8] bg-[#0c2a44] px-1.5 py-0.5 rounded border border-[#38bdf8]/50">
-                    lvl.1
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-center gap-2">
-                  <div
-                    className={`flex-1 bg-[#0080ff] border-[3px] border-[#0b0710] rounded-xl px-2 text-center transition-transform ${
-                      scorePop ? 'animate-counter-pop' : ''
-                    }`}
-                    style={{ paddingTop: hScale(4), paddingBottom: hScale(4) }}
-                  >
-                    <span className="text-2xl sm:text-3xl font-black text-white leading-none block cacapa-stroke">
-                      {engine.lastChips}
-                    </span>
-                  </div>
-
-                  <span className="text-[#ff3b30] font-black text-2xl sm:text-3xl px-1 cacapa-stroke">
-                    ×
-                  </span>
-
-                  <div
-                    className={`flex-1 ${multStyle.bg} border-[3px] border-[#0b0710] rounded-xl px-2 text-center transition-transform ${
-                      scorePop ? 'animate-counter-pop' : ''
-                    }`}
-                    style={{ paddingTop: hScale(4), paddingBottom: hScale(4) }}
-                  >
-                    <span className="text-2xl sm:text-3xl font-black text-white leading-none block cacapa-stroke">
-                      {engine.lastMult}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
               {/* STATS BUTTONS & COUNTERS */}
               <div className="flex flex-col" style={{ gap: hScale(5) }}>
                 {/* HANDS & FALTAS */}
@@ -450,10 +700,10 @@ export function PoolPage() {
                     className="flex-1 bg-[#1b2427] border-[3px] border-[#0b0710] rounded-xl px-2 text-center shadow-inner"
                     style={{ paddingTop: hScale(5), paddingBottom: hScale(5) }}
                   >
-                    <span className="text-xs sm:text-sm font-black uppercase text-white/80 block leading-tight">
+                    <span className="text-sm sm:text-base font-black uppercase text-white/90 block leading-tight">
                       Hands
                     </span>
-                    <span className="text-2xl sm:text-3xl font-black text-[#2f86ff] leading-none block mt-1 cacapa-stroke">
+                    <span className="text-3xl sm:text-4xl xl:text-5xl font-black text-[#2f86ff] leading-none block mt-1 cacapa-stroke">
                       {engine.shotsRemaining}
                     </span>
                   </div>
@@ -462,15 +712,15 @@ export function PoolPage() {
                     className="flex-1 bg-[#1b2427] border-[3px] border-[#0b0710] rounded-xl px-2 text-center shadow-inner"
                     style={{ paddingTop: hScale(5), paddingBottom: hScale(5) }}
                   >
-                    <span className="text-xs sm:text-sm font-black uppercase text-white/80 block leading-tight">
+                    <span className="text-sm sm:text-base font-black uppercase text-white/90 block leading-tight">
                       Faltas
                     </span>
                     <span
-                      className={`text-2xl sm:text-3xl font-black leading-none block mt-1 cacapa-stroke ${
-                        engine.foulCount >= 4 ? 'text-[#ff3b30] animate-pulse' : 'text-[#ff5a4a]'
+                      className={`text-3xl sm:text-4xl xl:text-5xl font-black leading-none block mt-1 cacapa-stroke ${
+                        engine.foulCount >= engine.maxFouls - 1 ? 'text-[#ff3b30] animate-pulse' : 'text-[#ff5a4a]'
                       }`}
                     >
-                      {engine.foulCount}/5
+                      {engine.foulCount}/{engine.maxFouls}
                     </span>
                   </div>
                 </div>
@@ -480,7 +730,7 @@ export function PoolPage() {
                   className="bg-[#1b2427] border-[3px] border-[#0b0710] rounded-xl px-3 flex items-center justify-center shadow-inner"
                   style={{ paddingTop: hScale(5), paddingBottom: hScale(5) }}
                 >
-                  <span className="text-2xl sm:text-3xl xl:text-4xl font-black text-[#f2b632] leading-none cacapa-stroke">
+                  <span className="text-3xl sm:text-4xl xl:text-5xl font-black text-[#f2b632] leading-none cacapa-stroke">
                     ${engine.money}
                   </span>
                 </div>
@@ -493,7 +743,7 @@ export function PoolPage() {
                     style={{ paddingTop: hScale(5), paddingBottom: hScale(5) }}
                     title="Abrir Menu de Opções"
                   >
-                    <span className="text-xs sm:text-sm xl:text-base font-black text-white uppercase cacapa-stroke-sm">
+                    <span className="text-sm sm:text-base xl:text-lg font-black text-white uppercase cacapa-stroke-sm">
                       Opções
                     </span>
                   </button>
@@ -502,10 +752,10 @@ export function PoolPage() {
                     className="flex-1 bg-[#1b2427] border-[3px] border-[#0b0710] rounded-xl px-1.5 text-center shadow-inner"
                     style={{ paddingTop: hScale(5), paddingBottom: hScale(5) }}
                   >
-                    <span className="text-xs sm:text-sm font-black uppercase text-white/80 block leading-tight">
+                    <span className="text-sm sm:text-base font-black uppercase text-white/90 block leading-tight">
                       Round
                     </span>
-                    <span className="text-xl sm:text-2xl font-black text-white leading-none block mt-0.5 cacapa-stroke">
+                    <span className="text-2xl sm:text-3xl xl:text-4xl font-black text-white leading-none block mt-0.5 cacapa-stroke">
                       {engine.shotsTaken + 1}
                     </span>
                   </div>
@@ -514,14 +764,14 @@ export function PoolPage() {
 
               {/* CONTROLS HINTS */}
               <div
-                className="text-center text-xs sm:text-sm text-[#9fb4a8] leading-tight select-none"
+                className="text-center text-sm sm:text-base text-[#9fb4a8] leading-tight select-none"
                 style={{ paddingTop: hScale(2) }}
               >
-                <span className="text-[#ffe08a] font-black block mb-1">
+                <span className="text-[#ffe08a] font-black text-sm sm:text-base xl:text-lg block mb-1">
                   LISAS {lisasCount} · LISTRADAS {listradasCount}
                 </span>
-                <div className="text-[11px] sm:text-xs">mirar: mouse · segurar: força</div>
-                <div className="text-[11px] sm:text-xs">soltar: tacar · dir.: cancelar</div>
+                <div className="text-xs sm:text-sm font-bold">mirar: mouse · segurar: força</div>
+                <div className="text-xs sm:text-sm font-bold">soltar: tacar · dir.: cancelar</div>
               </div>
             </div>
 
@@ -529,28 +779,39 @@ export function PoolPage() {
             <div className="flex-shrink-0" style={{ marginTop: hScale(4) }}>
               <button
                 onClick={() => setIsBallRackOpen(true)}
-                className="w-full group relative flex flex-col items-center justify-center px-2 sm:px-3 rounded-2xl bg-gradient-to-b from-[#c68949] via-[#ab7234] to-[#7c4815] border-[4px] border-[#0b0710] hover:translate-y-[-1px] transition-all cursor-pointer overflow-hidden select-none active:scale-95 shadow-[0_4px_0_rgba(0,0,0,0.5)]"
+                className="w-full group relative flex flex-col items-center justify-center px-3 rounded-2xl bg-gradient-to-b from-[#c68949] via-[#ab7234] to-[#7c4815] border-[4px] border-[#0b0710] hover:translate-y-[-1px] transition-all cursor-pointer overflow-hidden select-none active:scale-95 shadow-[0_4px_0_rgba(0,0,0,0.5)]"
                 style={{ paddingTop: hScale(6), paddingBottom: hScale(6) }}
                 title="Abrir Caixa de Bolas"
               >
                 <div className="absolute inset-x-0 top-0 h-1.5 bg-[#f4e2b8]/35 border-b border-[#8a5d2b]/50 pointer-events-none" />
                 <div className="absolute inset-y-0 w-3 bg-[#f4e2b8]/20 border-x border-[#8a5d2b]/40 pointer-events-none" />
 
-                <div className="text-xs sm:text-sm font-black text-[#fef08a] tracking-wider uppercase mb-1 flex items-center gap-1.5 z-10">
-                  <span>📦</span>
+                <div className="text-sm sm:text-base xl:text-lg font-black text-[#fef08a] tracking-wider uppercase mb-1 flex items-center gap-2 z-10">
+                  <span className="text-lg">📦</span>
                   <span>CAIXA DE BOLAS</span>
                 </div>
 
-                <div className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#161318] border-[3px] border-[#0b0710] flex items-center justify-center my-0.5 group-hover:scale-110 transition-transform z-10 shadow-lg">
+                <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#161318] border-[3px] border-[#0b0710] flex items-center justify-center my-0.5 group-hover:scale-110 transition-transform z-10 shadow-lg">
                   <div className="absolute top-1 left-2 w-2 h-1 rounded-full bg-white/40 blur-[0.3px]" />
-                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#fffef0] flex items-center justify-center shadow-inner">
-                    <span className="text-[#0b0710] font-black text-xs sm:text-sm leading-none">8</span>
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#fffef0] flex items-center justify-center shadow-inner">
+                    <span className="text-[#0b0710] font-black text-sm sm:text-base leading-none">8</span>
                   </div>
                 </div>
+              </button>
+            </div>
 
-                <span className="text-[10px] sm:text-xs font-black text-[#fff4d1] uppercase tracking-wider opacity-95 z-10">
-                  VER BARALHO (15)
-                </span>
+            {/* BOTÃO ENCICLOPÉDIA */}
+            <div className="flex-shrink-0" style={{ marginTop: hScale(3) }}>
+              <button
+                onClick={() => {
+                  setEncyclopediaTab('jokers');
+                  setIsEncyclopediaOpen(true);
+                }}
+                className="group w-full py-3 sm:py-3.5 px-3 rounded-2xl bg-[#8b3dff] hover:bg-[#9d4edd] border-[4px] border-[#0b0710] shadow-[0_5px_0_rgba(0,0,0,0.55)] text-[#ffd36a] font-black text-sm sm:text-base xl:text-lg uppercase tracking-wider transition-all hover:scale-102 active:scale-95 cursor-pointer cacapa-stroke-sm flex items-center justify-center gap-2 select-none"
+                title="Abrir Enciclopédia (Coringas, Tacos, Consumíveis, Fases e Bolas)"
+              >
+                <span className="text-lg sm:text-2xl transition-transform group-hover:scale-110">📖</span>
+                <span>ENCICLOPÉDIA</span>
               </button>
             </div>
           </div>
@@ -559,8 +820,8 @@ export function PoolPage() {
         {/* MESA PRINCIPAL E JOKERS */}
         <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 z-20 justify-start gap-1">
           {/* HEADER COM CORINGAS */}
-          <header className="flex items-center justify-between gap-3 h-24 sm:h-28 xl:h-36 flex-shrink-0">
-            <div className="w-6 xl:w-10 hidden md:block flex-shrink-0" />
+          <header className="flex items-center justify-between gap-3 h-24 sm:h-28 xl:h-36 flex-shrink-0 z-30 relative pointer-events-auto">
+            <div className="w-4 sm:w-12 lg:w-28 flex-shrink-0" />
 
             <div className="flex-1 flex justify-center items-center gap-2 sm:gap-3 xl:gap-4">
               {Array.from({ length: 5 }).map((_, idx) => (
@@ -569,38 +830,49 @@ export function PoolPage() {
                   card={engine.ownedJokers[idx] || null}
                   index={idx}
                   isActivating={activatingJokerIdx === idx}
+                  canDrag={!engine.areBallsMoving()}
                   onOpenDeck={() => setIsBallRackOpen(true)}
                   onSellCard={handleSellJoker}
                   onDropOnSlot={handleReorderJokers}
                 />
               ))}
+
+              <div className="h-8 w-[2px] bg-[#334155]/60 mx-1 hidden sm:block" />
+
+              <ConsumableSlot
+                consumable={engine.ownedConsumable}
+                onUse={handleUseConsumable}
+                onSell={handleSellConsumable}
+                nextShotMultMultiplier={engine.nextShotMultMultiplier}
+              />
             </div>
 
             <div className="flex items-center gap-2.5 flex-shrink-0">
               {engine.isMetaAchieved && !showShop && (
                 <button
                   onClick={() => setShowShop(true)}
-                  className="hidden lg:flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-sm uppercase tracking-wider animate-bounce shadow-lg shadow-amber-500/30 cursor-pointer font-cacapa cacapa-stroke-sm border-[3px] border-[#0b0710]"
+                  className="hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-base uppercase tracking-wider animate-bounce shadow-lg shadow-amber-500/30 cursor-pointer font-cacapa cacapa-stroke-sm border-[3px] border-[#0b0710]"
                 >
-                  <span className="text-base">⭐</span>
+                  <span className="text-xl">⭐</span>
                   <span>Ir para a Loja!</span>
                 </button>
               )}
 
               <div className="border-[4px] border-[#3ec1d3] bg-[#140c1c] shadow-[0_0_16px_rgba(62,193,211,0.65)] rounded-2xl px-4 py-1.5 text-center">
-                <div className="text-[#ff8fd0] font-black text-sm sm:text-base xl:text-lg tracking-wider drop-shadow-[0_0_8px_#ff3fa4] leading-tight uppercase font-cacapa">
+                <div className="text-[#ff8fd0] font-black text-base sm:text-lg xl:text-xl tracking-wider drop-shadow-[0_0_8px_#ff3fa4] leading-tight uppercase font-cacapa">
                   {currentTheme?.title || 'BOTECO DO ZÉ'}
                 </div>
-                <div className="text-[#9ff1ff] font-black text-[9px] sm:text-[10px] xl:text-xs tracking-widest drop-shadow-[0_0_6px_#3ec1d3] leading-tight uppercase font-cacapa">
+                <div className="text-[#9ff1ff] font-black text-xs sm:text-sm xl:text-base tracking-widest drop-shadow-[0_0_6px_#3ec1d3] leading-tight uppercase font-cacapa">
                   {currentTheme?.subtitle || 'CERVEJA GELADA'}
                 </div>
               </div>
             </div>
           </header>
 
-                    <section className="flex-1 min-h-0 w-full flex items-center justify-center relative p-1 sm:p-1.5 overflow-hidden">
+                    <section className="flex-1 min-h-0 w-full flex items-center justify-center relative p-1 sm:p-1.5 z-10 overflow-visible">
             <PoolCanvas
               engine={engine}
+              zoom={tableZoom}
               onShotFired={() => {
                 rerender();
               }}
@@ -610,7 +882,7 @@ export function PoolPage() {
       </div>
 
             {isMenuOpen && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-150 select-none font-cacapa">
+        <div className="fixed inset-0 z-[80] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-150 select-none font-cacapa">
           <div className="w-full max-w-lg sm:max-w-xl bg-[#171d22] border-[5px] border-[#0b0710] shadow-[0_10px_0_rgba(0,0,0,0.6)] rounded-3xl p-6 sm:p-8 flex flex-col gap-3 max-h-[92vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b-2 border-[#0b0710]">
@@ -627,6 +899,18 @@ export function PoolPage() {
 
             {/* Menu items */}
             <div className="flex flex-col gap-2 py-1 text-sm sm:text-base">
+              <button
+                onClick={() => {
+                  setEncyclopediaTab('jokers');
+                  setIsEncyclopediaOpen(true);
+                  setIsMenuOpen(false);
+                }}
+                className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#232b30] hover:bg-[#2d373e] text-[#ffd36a] font-black flex items-center gap-3.5 border-2 border-[#0b0710] cursor-pointer transition-colors active:scale-98"
+              >
+                <span className="text-2xl">📖</span>
+                <span>Enciclopédia & Compêndio</span>
+              </button>
+
               <button
                 onClick={() => {
                   setIsBallRackOpen(true);
@@ -656,6 +940,42 @@ export function PoolPage() {
                 <span className="text-2xl">📺</span>
                 <span>{isCrtEnabled ? 'Efeito CRT: LIGADO' : 'Efeito CRT: DESLIGADO'}</span>
               </button>
+
+              {/* SLIDER DE ZOOM DA MESA */}
+              <div className="w-full px-4 py-3 sm:py-3.5 rounded-2xl bg-[#232b30] border-2 border-[#0b0710] flex flex-col gap-2 select-none">
+                <div className="flex items-center justify-between text-sm sm:text-base font-black text-[#9ff1ff]">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl">🔍</span>
+                    <span>Zoom da Mesa</span>
+                  </div>
+                  <span className="bg-[#12181a] px-2.5 py-0.5 rounded-lg border border-[#0b0710] text-[#f2b632] cacapa-stroke-sm">
+                    {Math.round(tableZoom * 100)}%
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-[#9fb4a8] font-bold">80%</span>
+                  <input
+                    type="range"
+                    min="0.8"
+                    max="1.5"
+                    step="0.05"
+                    value={tableZoom}
+                    onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
+                    className="flex-1 h-2.5 bg-[#12181a] rounded-lg appearance-none cursor-pointer accent-[#2f86ff] border border-[#0b0710]"
+                  />
+                  <span className="text-xs text-[#9fb4a8] font-bold">150%</span>
+                  {tableZoom !== 1.0 && (
+                    <button
+                      onClick={() => handleZoomChange(1.0)}
+                      className="px-2 py-0.5 text-xs font-black bg-[#1b2427] hover:bg-[#2a343a] text-slate-300 rounded border border-[#0b0710] cursor-pointer"
+                      title="Restaurar zoom padrão para 100%"
+                    >
+                      100%
+                    </button>
+                  )}
+                </div>
+              </div>
 
               <button
                 onClick={() => {
@@ -702,6 +1022,20 @@ export function PoolPage() {
               </button>
 
               <button
+                onClick={handleCycleBackgroundTheme}
+                className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#232b30] hover:bg-[#2d373e] text-white font-black flex items-center justify-between border-2 border-[#0b0710] cursor-pointer transition-colors active:scale-98"
+                title="Alternar entre os temas de fundo das fases que você já liberou"
+              >
+                <div className="flex items-center gap-3.5">
+                  <span className="text-2xl">🎨</span>
+                  <span>Tema de fundo:</span>
+                </div>
+                <span className="bg-[#12181a] px-3 py-1 rounded-xl border border-[#0b0710] text-[#f2b632] text-xs sm:text-sm font-black cacapa-stroke-sm truncate max-w-[210px]">
+                  {getBgThemeLabel()}
+                </span>
+              </button>
+
+              <button
                 onClick={() => {
                   setIsHelpOpen(true);
                   setIsMenuOpen(false);
@@ -716,23 +1050,55 @@ export function PoolPage() {
 
               <button
                 onClick={() => {
-                  engine.startNewGame();
                   setIsMenuOpen(false);
-                  setShowShop(false);
-                  rerender();
+                  setIsTitleOpen(true);
                 }}
                 className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl hover:bg-[#e0392b]/20 text-[#ff5a4a] font-black flex items-center gap-3.5 border-2 border-transparent hover:border-[#e0392b]/40 cursor-pointer transition-colors active:scale-98"
               >
                 <span className="text-2xl">🔄</span>
-                <span>Reiniciar Partida</span>
+                <span>Voltar ao Menu Principal</span>
               </button>
 
+              {isVox && (
+                <>
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setIsAdminOpen(true);
+                    }}
+                    className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#4d1627] hover:bg-[#681e35] text-[#ffd36a] font-black flex items-center justify-between border-2 border-[#b52a4e] cursor-pointer transition-colors active:scale-98"
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <span className="text-2xl">🛠️</span>
+                      <span>Painel Debug & Admin</span>
+                    </div>
+                    <span className="text-[10px] bg-black/40 px-2 py-0.5 rounded font-mono text-slate-300">
+                      ↑↑↓↓←→←→
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      navigate('/dashboard');
+                    }}
+                    className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#3b1d60] hover:bg-[#522986] text-[#ffd36a] font-black flex items-center gap-3.5 border-2 border-[#8b3dff] cursor-pointer transition-colors active:scale-98"
+                  >
+                    <span className="text-2xl">📊</span>
+                    <span>Painel Vox (/dashboard)</span>
+                  </button>
+                </>
+              )}
+
               <button
-                onClick={() => navigate('/')}
+                onClick={() => {
+                  logout();
+                  navigate('/login');
+                }}
                 className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl hover:bg-[#2d373e] text-slate-400 font-black flex items-center gap-3.5 border-2 border-transparent cursor-pointer transition-colors active:scale-98"
               >
-                <span className="text-2xl">🏠</span>
-                <span>Sair p/ Início</span>
+                <span className="text-2xl">🚪</span>
+                <span>Sair da Conta ({user?.name || 'Desconectar'})</span>
               </button>
             </div>
 
@@ -740,55 +1106,85 @@ export function PoolPage() {
               onClick={() => setIsMenuOpen(false)}
               className="w-full py-4 px-6 rounded-2xl bg-[#2f86ff] hover:bg-[#4aa3ff] border-[4px] border-[#0b0710] shadow-[0_4px_0_rgba(0,0,0,0.45)] text-white font-black text-base sm:text-lg uppercase tracking-wider transition-all active:scale-95 cursor-pointer cacapa-stroke-sm mt-2"
             >
-              VOLTAR AO JOGO
+              {isTitleOpen ? 'VOLTAR AO MENU' : 'VOLTAR AO JOGO'}
             </button>
           </div>
         </div>
       )}
 
-            {(engine.state === 'GAME_OVER' || engine.state === 'VICTORY') && (
-        <GameOverModal
+        {(engine.state === 'GAME_OVER' || engine.state === 'VICTORY') && (
+          <GameOverModal
+            engine={engine}
+            onRestart={() => {
+              setIsTitleOpen(true);
+            }}
+          />
+        )}
+
+        <BossIntroModal
+          isOpen={isBossIntroOpen}
+          onClose={() => setIsBossIntroOpen(false)}
           engine={engine}
-          onRestart={() => {
-            engine.startNewGame();
-            setShowShop(false);
-            rerender();
-          }}
         />
-      )}
 
-            <BossIntroModal
-        isOpen={isBossIntroOpen}
-        onClose={() => setIsBossIntroOpen(false)}
-        engine={engine}
-      />
+        <TitleScreenModal
+          isOpen={isTitleOpen}
+          selectedCueId={selectedCueId}
+          onSelectCue={(id) => setSelectedCueId(id)}
+          onPlay={(cueId) => handleStartGame(cueId)}
+          onOpenEncyclopedia={() => {
+            setEncyclopediaTab('cues');
+            setIsEncyclopediaOpen(true);
+          }}
+          onOpenOptions={() => {
+            setIsMenuOpen(true);
+          }}
+          onToggleSound={() => {
+            handleToggleSound();
+            handleToggleMusic();
+          }}
+          isMuted={isMuted && isMusicMuted}
+        />
 
-            <TitleScreenModal
-        isOpen={isTitleOpen}
-        onPlay={() => setIsTitleOpen(false)}
-        onHelp={() => {
-          setIsTitleOpen(false);
-          setIsHelpOpen(true);
-        }}
-        onToggleSound={() => {
-          handleToggleSound();
-          handleToggleMusic();
-        }}
-        isMuted={isMuted && isMusicMuted}
-      />
+        <EncyclopediaModal
+          isOpen={isEncyclopediaOpen}
+          initialTab={encyclopediaTab}
+          onClose={() => setIsEncyclopediaOpen(false)}
+        />
 
-            <PoolHelpModal
-        isOpen={isHelpOpen}
-        onClose={() => setIsHelpOpen(false)}
-      />
+        <ConsumableTargetModal
+          isOpen={isConsumableTargetModalOpen}
+          consumable={engine.ownedConsumable}
+          engine={engine}
+          onClose={() => setIsConsumableTargetModalOpen(false)}
+          onSelectBall={handleSelectBallTarget}
+        />
 
-            <BallRackModal
-        isOpen={isBallRackOpen}
-        onClose={() => setIsBallRackOpen(false)}
-        engine={engine}
-        canUpgrade={engine.state === 'SHOP' || showShop}
-        onUpdate={rerender}
-      />
+        <PoolHelpModal
+          isOpen={isHelpOpen}
+          onClose={() => setIsHelpOpen(false)}
+        />
+
+        <BallRackModal
+          isOpen={isBallRackOpen}
+          onClose={() => setIsBallRackOpen(false)}
+          engine={engine}
+          canUpgrade={engine.state === 'SHOP' || showShop}
+          onUpdate={rerender}
+        />
+
+        <JokerCollectionModal
+          isOpen={isJokerCollectionOpen}
+          onClose={() => setIsJokerCollectionOpen(false)}
+        />
+
+        <AdminDebugModal
+          isOpen={isAdminOpen}
+          onClose={() => setIsAdminOpen(false)}
+          engine={engine}
+          onUpdate={rerender}
+          user={user}
+        />
     </div>
   );
 }

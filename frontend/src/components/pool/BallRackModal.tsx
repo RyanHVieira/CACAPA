@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CacapaPoolEngine } from '../../game/engine/CacapaPoolEngine';
-import { BALL_COLORS } from '../../game/models/Ball';
+import { BallCanvasPreview } from './BallCanvasPreview';
 
 interface BallRackModalProps {
   isOpen: boolean;
@@ -42,7 +42,6 @@ export const BallRackModal: React.FC<BallRackModalProps> = ({
               Caçapa • Observar Caixa
             </span>
             <h3 className="text-3xl sm:text-4xl font-black text-white flex items-center gap-3 cacapa-stroke mt-0.5">
-              <span>📦</span> CAIXA DE BOLAS (SEU DECK)
             </h3>
             <p className="text-sm sm:text-base text-[#9fb4a8] mt-1 cacapa-stroke-sm">
               {activeOnTableCount} bolas na mesa • {deckBalls.length} bolas no deck • {enhancedBallsCount} com modificadores ativos
@@ -87,7 +86,6 @@ export const BallRackModal: React.FC<BallRackModalProps> = ({
               const liveBall = engine.balls.find((b) => b.number === deckBall.number);
               const isOnTable = liveBall && !liveBall.isPocketed && !liveBall.isSinking;
               const isSelected = selectedIndex === idx;
-              const baseColor = BALL_COLORS[deckBall.number] || '#ffffff';
               const isStripe = deckBall.isStripe;
 
               return (
@@ -112,24 +110,16 @@ export const BallRackModal: React.FC<BallRackModalProps> = ({
                     {isOnTable ? '● Na Mesa' : '○ Fora da Mesa'}
                   </span>
 
-                  <div
-                    className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full shadow-xl flex items-center justify-center my-2 overflow-hidden border-[3px] border-[#0b0710]"
-                    style={{
-                      backgroundColor: isStripe ? '#ffffff' : (currentEnh?.color || baseColor),
-                    }}
-                  >
-                    {isStripe && (
-                      <div
-                        className="absolute inset-x-0 h-5 sm:h-6"
-                        style={{ backgroundColor: currentEnh?.color || baseColor }}
-                      />
-                    )}
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white flex items-center justify-center text-[#0b0710] font-black text-sm sm:text-base z-10 shadow-inner">
-                      {deckBall.number}
-                    </div>
-
+                  <div className="relative my-2 flex items-center justify-center">
+                    <BallCanvasPreview
+                      number={deckBall.number}
+                      isStripe={isStripe}
+                      enhancement={currentEnh}
+                      size={68}
+                      animate={isSelected}
+                    />
                     {currentEnh && (
-                      <div className="absolute top-1 right-1 text-sm sm:text-base z-20 drop-shadow">
+                      <div className="absolute top-0 right-0 text-sm sm:text-base z-20 drop-shadow">
                         {currentEnh.icon}
                       </div>
                     )}

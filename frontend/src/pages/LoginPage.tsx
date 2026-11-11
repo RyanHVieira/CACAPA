@@ -17,7 +17,7 @@ export function LoginPage() {
 
     try {
       await login(name.trim(), password);
-      navigate('/');
+      navigate('/pool');
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { message?: string } } };
       setError(axiosError.response?.data?.message || 'Erro ao fazer login');

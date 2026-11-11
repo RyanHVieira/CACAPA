@@ -51,15 +51,15 @@ export interface TableDef {
 
 export const TG: number[] = [
   120,
-  350,
-  900,
-  2200,
-  3800,
-  6000,
+  300,
+  600,
+  1200,
+  2500,
+  5000,
+  7000,
   9000,
-  13000,
-  19000,
-  27000,
+  15000,
+  22000,
 ];
 
 export const NM: string[] = [

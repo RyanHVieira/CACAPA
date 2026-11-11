@@ -152,7 +152,7 @@ export class Table {
 
     for (const pocket of this.pockets) {
       const distSq = (ball.pos.x - pocket.x) ** 2 + (ball.pos.y - pocket.y) ** 2;
-      const captureThreshold = (pocket.radius + ball.radius * 0.45) ** 2;
+      const captureThreshold = (pocket.radius + ball.radius * 0.65) ** 2;
       if (distSq < captureThreshold) {
         return pocket;
       }

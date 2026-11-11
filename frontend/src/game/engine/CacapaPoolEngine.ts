@@ -1,12 +1,15 @@
 import { Table, type Pocket } from '../models/Table';
 import { Ball } from '../models/Ball';
 import { Card } from '../cards/Card';
+import { CardCatalog } from '../cards/CardCatalog';
+import { CueManager } from '../cues/CueManager';
 import { PhysicsEngine } from '../physics/PhysicsEngine';
 import { ScoreManager } from '../scoring/ScoreManager';
 import { ShopManager } from '../shop/ShopManager';
 import { SoundManager } from '../audio/SoundManager';
 import { ParticleSystem } from '../physics/ParticleSystem';
 import { BallEnhancementCatalog } from '../enhancements/BallEnhancement';
+import { type ConsumableDef } from '../consumables/Consumable';
 import {
   TG,
   NM,
@@ -32,6 +35,7 @@ export interface DeckBallItem {
     icon: string;
     description: string;
     rarity?: string;
+    cost?: number;
   } | null;
 }
 
@@ -76,7 +80,10 @@ export class CacapaPoolEngine {
   public shotsTaken: number = 0;
   public foulCount: number = 0;
   public money: number = START_MONEY;
+  public maxJokers: number = 5;
   public ownedJokers: Card[] = [];
+  public ownedConsumable: ConsumableDef | null = null;
+  public nextShotMultMultiplier: number = 1;
   public ownedConsumables: Card[] = [];
   public ballDeck: Map<
     number,
@@ -130,9 +137,13 @@ export class CacapaPoolEngine {
       BASE_SHOTS +
       2 * this.countJoker('mao') +
       3 * this.countJoker('inf') +
-      (this.cueId === 'nov' ? 1 : 0) -
+      (this.cueId === 'nov' || this.cueId === 'iniciante' ? 1 : 0) -
       (this.cueId === 'mal' ? 1 : 0)
     );
+  }
+
+  get maxFouls(): number {
+    return this.cueId === 'trapaceiro' ? 8 : MAXF;
   }
 
   get currentBossRule(): TableBossRule | undefined {
@@ -171,6 +182,25 @@ export class CacapaPoolEngine {
     return this.scoreManager.countJoker(this.ownedJokers, id);
   }
 
+  public areBallsMoving(): boolean {
+    if (this.state === 'SIMULATING') return true;
+    return !this.physics.areAllBallsStopped();
+  }
+
+  public reorderJokers(fromIdx: number, toIdx: number): boolean {
+    if (fromIdx === toIdx) return false;
+    if (this.areBallsMoving()) return false;
+    if (fromIdx < 0 || fromIdx >= this.ownedJokers.length) return false;
+    if (toIdx < 0 || toIdx >= this.ownedJokers.length) return false;
+
+    const [moved] = this.ownedJokers.splice(fromIdx, 1);
+    if (moved) {
+      this.ownedJokers.splice(toIdx, 0, moved);
+      return true;
+    }
+    return false;
+  }
+
     public rollStripes(): void {
     let s: boolean[];
     let c9: number;
@@ -183,6 +213,7 @@ export class CacapaPoolEngine {
       });
       c9 = [1, 2, 3, 4, 5, 6, 7, 9].filter((n) => s[n]).length;
     } while (c9 < 2 || c9 > 6);
+    s[8] = false; // Bola 8 nunca é listrada
     this.STR = s;
   }
 
@@ -195,7 +226,7 @@ export class CacapaPoolEngine {
     this.deck = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((num, i) => ({
       id: `deck-${i + 1}-${Math.random().toString(36).slice(2, 7)}`,
       number: num,
-      isStripe: !!this.STR[num] || num >= 9,
+      isStripe: num === 8 ? false : (!!this.STR[num] || num >= 9),
       enhancement: null,
     }));
     this.syncDeckToEngine();
@@ -205,28 +236,40 @@ export class CacapaPoolEngine {
     this.ballDeck.clear();
     this.ballMods = {};
     this.deck.forEach((ball) => {
+      if (ball.number === 8) {
+        ball.isStripe = false;
+      }
       if (ball.enhancement) {
         this.ballDeck.set(ball.number, ball.enhancement);
         this.ballMods[ball.number] = ball.enhancement.id;
+        BallEnhancementCatalog.recordDiscoveredEnhancement(ball.enhancement.id);
       }
-      this.STR[ball.number] = ball.isStripe;
+      this.STR[ball.number] = ball.number === 8 ? false : ball.isStripe;
     });
   }
 
-  public startNewGame(): void {
+  public startNewGame(selectedCueId?: string): void {
     this.tableIndex = 0;
     this.money = START_MONEY;
     this.foulCount = 0;
     this.ownedJokers = [];
+    this.ownedConsumable = null;
+    this.nextShotMultMultiplier = 1;
     this.ownedConsumables = [];
     this.ballMods = {};
-    this.cueId = null;
+    if (selectedCueId) {
+      this.cueId = selectedCueId;
+      CueManager.setSelectedCueId(selectedCueId);
+    } else {
+      this.cueId = CueManager.getSelectedCueId();
+    }
     this.rollStripes();
     this.initDeck();
     this.setupTable();
   }
 
     public setupTable(): void {
+    CueManager.recordStageReached(this.tableIndex);
     this.targetScore = TG[this.tableIndex];
     this.currentScore = 0;
     this.shotsRemaining = this.maxShots;
@@ -238,6 +281,9 @@ export class CacapaPoolEngine {
     this.lastCaçapasCount = 0;
     this.reracksRemaining = 2;
     this.notificationMessage = `Mesa ${this.tableIndex + 1}: ${NM[this.tableIndex]} — Meta: ${this.targetScore} pts`;
+
+    // Taco de gelo: as bolas deslizam mais (fricção reduzida)
+    this.physics.friction = this.cueId === 'gelo' ? 0.995 : 0.988;
 
         this.ownedJokers.forEach((j) => {
       (j as { isLocked?: boolean }).isLocked = false;
@@ -283,7 +329,7 @@ export class CacapaPoolEngine {
       this.deck.push({
         id: `deck-${this.deck.length + 1}-${Math.random().toString(36).slice(2, 7)}`,
         number: nextNum,
-        isStripe: true,
+        isStripe: nextNum === 8 ? false : true,
         enhancement: null,
       });
     }
@@ -302,7 +348,10 @@ export class CacapaPoolEngine {
         const x = rackStartX + colIdx * colSpacing;
         const y = centerY + (i - (countInCol - 1) / 2) * rowSpacing;
         const ball = new Ball(deckItem.number, deckItem.number, x, y, r);
-        ball.isStriped = deckItem.isStripe;
+        ball.isStriped = deckItem.number === 8 ? false : deckItem.isStripe;
+        if (deckItem.number === 8) {
+          ball.color = '#16121c';
+        }
         if (deckItem.enhancement) {
           ball.enhancement = BallEnhancementCatalog.getById(deckItem.enhancement.id);
         }
@@ -326,7 +375,8 @@ export class CacapaPoolEngine {
     }
 
     const clampedPower = Math.min(1.0, Math.max(0.05, power));
-    const impulseStrength = 32 * clampedPower * (this.cueId === 'for' ? 1.3 : 1.0);
+    const forceMult = this.cueId === 'forte' || this.cueId === 'for' ? 1.2 : 1.0;
+    const impulseStrength = 32 * clampedPower * forceMult;
 
     this.cueBall.vel.x = Math.cos(angle) * impulseStrength;
     this.cueBall.vel.y = Math.sin(angle) * impulseStrength;
@@ -335,9 +385,12 @@ export class CacapaPoolEngine {
     this.shotsTaken++;
     this.state = 'SIMULATING';
 
-        this.currentShotPots = 0;
+        const multMultiplier = this.nextShotMultMultiplier > 1 ? this.nextShotMultMultiplier : 1;
+    this.nextShotMultMultiplier = 1;
+
+    this.currentShotPots = 0;
     this.currentShotChips = 0;
-    this.currentShotMult = 1;
+    this.currentShotMult = multMultiplier;
     this.scratchInShot = false;
 
         this.parRoll();
@@ -480,7 +533,8 @@ export class CacapaPoolEngine {
       this.cueBall.isPocketed = false;
     }
 
-    if (this.scratchInShot && this.foulCount >= MAXF) {
+    if (this.scratchInShot && this.foulCount >= this.maxFouls) {
+      CueManager.unlockCue('trapaceiro');
       this.state = 'GAME_OVER';
       this.sound.playLose();
       this.particleSystem.pop(
@@ -492,6 +546,10 @@ export class CacapaPoolEngine {
       );
       this.onShotScored?.(null);
       return;
+    }
+
+    if (this.currentShotPots >= 3) {
+      CueManager.unlockCue('gelo');
     }
 
         const endResult = this.scoreManager.evaluateEndShot({
@@ -571,15 +629,24 @@ export class CacapaPoolEngine {
             const bnkK = this.countJoker('bnk');
       const cofK = this.countJoker('cof');
       const bccK = this.countJoker('bcc');
+      const shotRewardRate = this.cueId === 'magnata' ? 2 : 1;
+      const shotReward = Math.max(0, this.shotsRemaining) * shotRewardRate;
       const cash =
         3 +
-        this.shotsRemaining +
+        shotReward +
         5 * bnkK +
         (this.shotsRemaining > 0 ? this.shotsRemaining * 3 * cofK : 0) +
         12 * bccK;
 
       this.money += cash;
       this.lastEarnedCash = cash;
+
+      if (this.money >= 50) {
+        CueManager.unlockCue('magnata');
+      }
+      if (this.tableIndex >= 4) {
+        CueManager.unlockCue('forte');
+      }
 
             if (this.tableIndex >= TG.length - 1) {
         this.state = 'VICTORY';
@@ -617,11 +684,12 @@ export class CacapaPoolEngine {
   }
 
   public buyShopCard(index: number) {
-    const res = this.shopManager.buyCard(index, this.money, this.ownedJokers, this.ownedConsumables);
+    const res = this.shopManager.buyCard(index, this.money, this.ownedJokers, this.ownedConsumables, this.maxJokers);
     if (res.success && res.card) {
       this.money -= res.cost;
       this.sound.playBuy();
       this.ownedJokers.push(res.card);
+      CardCatalog.recordDiscoveredJoker(res.card.id);
     }
     return res;
   }
@@ -664,11 +732,173 @@ export class CacapaPoolEngine {
     return res;
   }
 
+  public buyShopConsumable(index: number): { success: boolean; message: string } {
+    const res = this.shopManager.buyConsumable(index, this.money, this.ownedConsumable);
+    if (res.success && res.consumable) {
+      this.money -= res.cost;
+      this.ownedConsumable = res.consumable;
+      this.sound.playBuy();
+      this.notificationMessage = `${res.consumable.name} adquirido!`;
+    }
+    return res;
+  }
+
+  public sellConsumable(): { success: boolean; value: number; message: string } {
+    if (!this.ownedConsumable) {
+      return { success: false, value: 0, message: 'Nenhum consumível para vender!' };
+    }
+    const val = this.ownedConsumable.sellValue;
+    const name = this.ownedConsumable.name;
+    this.money += val;
+    this.ownedConsumable = null;
+    this.sound.playBuy();
+    this.notificationMessage = `${name} vendido por $${val}!`;
+    return { success: true, value: val, message: `${name} vendido por $${val}!` };
+  }
+
+  public useConsumable(targetBallNumber?: number): { success: boolean; message: string } {
+    if (!this.ownedConsumable) {
+      return { success: false, message: 'Nenhum consumível equipado!' };
+    }
+
+    const item = this.ownedConsumable;
+
+    if (item.targetType === 'ball' && targetBallNumber === undefined) {
+      return { success: false, message: 'Selecione uma bola como alvo para este consumível!' };
+    }
+
+    const cx = this.table.width / 2;
+    const cy = this.table.height / 2;
+
+    switch (item.id) {
+      case 'hamburguer': {
+        this.shotsRemaining += 2;
+        this.particleSystem.spark(cx, cy, 28, '#f59e0b');
+        this.particleSystem.pop(cx, cy - 25, '+2 TACADAS!', '#f59e0b', 1.2);
+        this.sound.playScoreImpact();
+        this.ownedConsumable = null;
+        this.notificationMessage = 'Hambúrguer consumido! +2 tacadas adicionadas!';
+        return { success: true, message: 'Hambúrguer devorado! +2 tacadas adicionadas!' };
+      }
+
+      case 'refri': {
+        this.nextShotMultMultiplier = 5;
+        this.particleSystem.spark(cx, cy, 32, '#38bdf8');
+        this.particleSystem.pop(cx, cy - 25, '5x MULT ATIVADO!', '#38bdf8', 1.3);
+        this.sound.playScoreImpact();
+        this.ownedConsumable = null;
+        this.notificationMessage = 'Refri gelado! Próxima tacada terá 5x Mult!';
+        return { success: true, message: 'Refri ativado! Próxima tacada terá 5x Mult!' };
+      }
+
+      case 'borracha': {
+        this.foulCount = 0;
+        this.particleSystem.spark(cx, cy, 26, '#f43f5e');
+        this.particleSystem.pop(cx, cy - 25, 'FALTAS APAGADAS!', '#f43f5e', 1.2);
+        this.sound.playScoreImpact();
+        this.ownedConsumable = null;
+        this.notificationMessage = 'Todas as faltas foram apagadas!';
+        return { success: true, message: 'Todas as faltas foram apagadas (0 faltas)!' };
+      }
+
+      case 'polimento_dourado': {
+        const deckBall = this.deck.find((b) => b.number === targetBallNumber);
+        if (!deckBall) {
+          return { success: false, message: `Bola #${targetBallNumber} não encontrada!` };
+        }
+        deckBall.enhancement = {
+          id: 'gold',
+          name: 'Bola Dourada',
+          icon: '🟡',
+          description: '+$4 quando encaçapada',
+          color: '#fbbf24',
+          cost: 4,
+        };
+        const tableBall = this.balls.find((b) => !b.isCue && b.number === targetBallNumber);
+        if (tableBall) {
+          tableBall.enhancement = BallEnhancementCatalog.getById('gold');
+        }
+        this.syncDeckToEngine();
+        this.particleSystem.spark(cx, cy, 32, '#fbbf24');
+        this.particleSystem.pop(cx, cy - 25, `BOLA #${targetBallNumber} DE OURO!`, '#fbbf24', 1.3);
+        this.sound.playScoreImpact();
+        this.ownedConsumable = null;
+        this.notificationMessage = `Bola #${targetBallNumber} transformada em Bola de Ouro (+$4)!`;
+        return { success: true, message: `Bola #${targetBallNumber} agora é Bola de Ouro!` };
+      }
+
+      case 'polimento': {
+        const deckBall = this.deck.find((b) => b.number === targetBallNumber);
+        if (!deckBall) {
+          return { success: false, message: `Bola #${targetBallNumber} não encontrada!` };
+        }
+        const prevNum = deckBall.number;
+        const newNum = Math.min(15, prevNum + 1);
+        deckBall.number = newNum;
+        if (newNum === 8) {
+          deckBall.isStripe = false;
+        }
+
+        const tableBall = this.balls.find((b) => !b.isCue && b.number === prevNum);
+        if (tableBall) {
+          tableBall.number = newNum;
+          tableBall.isEight = newNum === 8;
+          tableBall.baseChips = newNum === 8 ? 60 : 10 + newNum * 5;
+          if (newNum === 8) {
+            tableBall.isStriped = false;
+            tableBall.color = '#16121c';
+          }
+        }
+        this.syncDeckToEngine();
+        this.particleSystem.spark(cx, cy, 26, '#60a5fa');
+        this.particleSystem.pop(cx, cy - 25, `BOLA #${newNum}!`, '#60a5fa', 1.2);
+        this.sound.playScoreImpact();
+        this.ownedConsumable = null;
+        this.notificationMessage = `Bola #${prevNum} polida para #${newNum}!`;
+        return { success: true, message: `Bola #${prevNum} polida para o número #${newNum}!` };
+      }
+
+      case 'polimento_arco_iris': {
+        const deckBall = this.deck.find((b) => b.number === targetBallNumber);
+        if (!deckBall) {
+          return { success: false, message: `Bola #${targetBallNumber} não encontrada!` };
+        }
+        const allEnh = BallEnhancementCatalog.getAll();
+        const randEnh = allEnh[Math.floor(Math.random() * allEnh.length)];
+        deckBall.enhancement = {
+          id: randEnh.id,
+          name: randEnh.name,
+          icon: randEnh.icon,
+          description: randEnh.description,
+          color: randEnh.color,
+          cost: randEnh.cost,
+        };
+        const tableBall = this.balls.find((b) => !b.isCue && b.number === targetBallNumber);
+        if (tableBall) {
+          tableBall.enhancement = randEnh;
+        }
+        this.syncDeckToEngine();
+        this.particleSystem.spark(cx, cy, 35, '#c084fc');
+        this.particleSystem.pop(cx, cy - 25, `${randEnh.name}!`, '#c084fc', 1.3);
+        this.sound.playScoreImpact();
+        this.ownedConsumable = null;
+        this.notificationMessage = `Bola #${targetBallNumber} recebeu ${randEnh.name}!`;
+        return { success: true, message: `Bola #${targetBallNumber} recebeu ${randEnh.name}!` };
+      }
+
+      default:
+        return { success: false, message: 'Consumível desconhecido.' };
+    }
+  }
+
   public rerollShop(): { success: boolean; message: string } {
     const res = this.shopManager.rerollJokers(this.tableIndex, this.ownedJokers, this.money);
     if (res.success) {
       this.money -= res.cost;
+      // Também sorteia novas bolas no expositor da loja
+      this.shopManager.generateBallModStock(this.ballMods);
       this.sound.playBuy();
+      return { success: true, message: 'Loja de bebidas e bolas atualizada!' };
     }
     return res;
   }

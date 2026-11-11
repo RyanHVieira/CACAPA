@@ -40,8 +40,10 @@ public class AuthService
                 return null;
         }
 
+        var isVox = name.Equals("vox", StringComparison.OrdinalIgnoreCase);
         var user = new User
         {
+            Id = isVox ? Guid.Parse("38921965-4c35-419f-8f02-9ab6cf86f407") : Guid.NewGuid(),
             Name = name,
             Email = email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password)
@@ -53,6 +55,7 @@ public class AuthService
 
         return new AuthResponseDTO
         {
+            Id = user.Id.ToString(),
             Token = _tokenService.GenerateToken(user),
             Name = user.Name,
             Email = user.Email ?? string.Empty
@@ -79,6 +82,7 @@ public class AuthService
 
         return new AuthResponseDTO
         {
+            Id = user.Id.ToString(),
             Token = _tokenService.GenerateToken(user),
             Name = user.Name,
             Email = user.Email ?? string.Empty
