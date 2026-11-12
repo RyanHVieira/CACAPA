@@ -164,35 +164,7 @@ export function PoolPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [user, engine, isAdminOpen]);
 
-  const handleCycleBackgroundTheme = () => {
-    const highest = CueManager.getHighestStageReached();
-    const availableOptions: string[] = ['auto'];
-    for (let i = 0; i <= highest && i < AMBIENT_THEMES.length; i++) {
-      availableOptions.push(i.toString());
-    }
 
-    const currentIdx = availableOptions.indexOf(selectedBgTheme);
-    const nextIdx = (currentIdx + 1) % availableOptions.length;
-    const nextVal = availableOptions[nextIdx];
-
-    setSelectedBgTheme(nextVal);
-    try {
-      localStorage.setItem('cacapa_selected_bg_theme', nextVal);
-    } catch {}
-    rerender();
-  };
-
-  const getBgThemeLabel = () => {
-    const defaultIdx = Math.max(0, engine.ante - 1) % AMBIENT_THEMES.length;
-    if (selectedBgTheme === 'auto') {
-      return `Automático (Mesa ${defaultIdx + 1})`;
-    }
-    const idx = parseInt(selectedBgTheme, 10);
-    if (!isNaN(idx) && AMBIENT_THEMES[idx]) {
-      return `Mesa ${idx + 1}: ${AMBIENT_THEMES[idx].title}`;
-    }
-    return 'Automático';
-  };
 
   const handleZoomChange = (newZoom: number) => {
     setTableZoom(newZoom);
@@ -286,9 +258,9 @@ export function PoolPage() {
     }
   };
 
-  const handleSelectBallTarget = (ballNumber: number) => {
+  const handleSelectBallTarget = (ballNumber: number, ballIndex?: number) => {
     setIsConsumableTargetModalOpen(false);
-    engine.useConsumable(ballNumber);
+    engine.useConsumable(ballNumber, ballIndex);
     rerender();
   };
 
@@ -473,19 +445,18 @@ export function PoolPage() {
                   <span>{isMusicMuted ? 'Tocar Caçapa Jazz (M)' : 'Mutar Música (M)'}</span>
                 </button>
 
-                <button
-                  onClick={handleCycleBackgroundTheme}
-                  className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#232b30] hover:bg-[#2d373e] text-white font-black flex items-center justify-between border-2 border-[#0b0710] cursor-pointer transition-colors active:scale-98"
-                  title="Alternar entre os temas de fundo das fases que você já liberou"
+                <div
+                  className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#1d2428] text-white font-black flex items-center justify-between border-2 border-[#0b0710]"
+                  title="Gire a Bola 8 na logo do menu inicial para trocar o tema de fundo"
                 >
                   <div className="flex items-center gap-3.5">
-                    <span className="text-2xl">🎨</span>
+                    <span className="text-2xl">🎱</span>
                     <span>Tema de fundo:</span>
                   </div>
                   <span className="bg-[#12181a] px-3 py-1 rounded-xl border border-[#0b0710] text-[#f2b632] text-xs sm:text-sm font-black cacapa-stroke-sm truncate max-w-[210px]">
-                    {getBgThemeLabel()}
+                    Gire a Bola 8 no Menu!
                   </span>
-                </button>
+                </div>
 
                 <button
                   onClick={() => {
@@ -975,28 +946,6 @@ export function PoolPage() {
 
             {/* Menu items */}
             <div className="flex flex-col gap-2 py-1 text-sm sm:text-base">
-              <button
-                onClick={() => {
-                  setEncyclopediaTab('jokers');
-                  setIsEncyclopediaOpen(true);
-                  setIsMenuOpen(false);
-                }}
-                className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#232b30] hover:bg-[#2d373e] text-[#ffd36a] font-black flex items-center gap-3.5 border-2 border-[#0b0710] cursor-pointer transition-colors active:scale-98"
-              >
-                <span className="text-2xl">📖</span>
-                <span>Enciclopédia & Compêndio</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsBallRackOpen(true);
-                  setIsMenuOpen(false);
-                }}
-                className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#232b30] hover:bg-[#2d373e] text-[#f2b632] font-black flex items-center gap-3.5 border-2 border-[#0b0710] cursor-pointer transition-colors active:scale-98"
-              >
-                <span className="text-2xl">📦</span>
-                <span>Caixa de Bolas</span>
-              </button>
 
               <button
                 onClick={() => {
@@ -1073,23 +1022,6 @@ export function PoolPage() {
               </button>
 
               <button
-                onClick={() => {
-                  engine.rerack();
-                  setIsMenuOpen(false);
-                  rerender();
-                }}
-                disabled={engine.reracksRemaining <= 0}
-                className={`w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#232b30] border-2 border-[#0b0710] font-black flex items-center gap-3.5 transition-colors active:scale-98 ${
-                  engine.reracksRemaining > 0
-                    ? 'hover:bg-[#2d373e] text-[#ffd36a] cursor-pointer'
-                    : 'opacity-40 text-slate-500 cursor-not-allowed'
-                }`}
-              >
-                <span className="text-2xl">🔄</span>
-                <span>Rearrumar Mesa ({engine.reracksRemaining})</span>
-              </button>
-
-              <button
                 onClick={handleToggleSound}
                 className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#232b30] hover:bg-[#2d373e] text-white font-black flex items-center gap-3.5 border-2 border-[#0b0710] cursor-pointer transition-colors active:scale-98"
               >
@@ -1105,19 +1037,18 @@ export function PoolPage() {
                 <span>{isMusicMuted ? 'Tocar Caçapa Jazz (M)' : 'Mutar Música (M)'}</span>
               </button>
 
-              <button
-                onClick={handleCycleBackgroundTheme}
-                className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#232b30] hover:bg-[#2d373e] text-white font-black flex items-center justify-between border-2 border-[#0b0710] cursor-pointer transition-colors active:scale-98"
-                title="Alternar entre os temas de fundo das fases que você já liberou"
+              <div
+                className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#1d2428] text-white font-black flex items-center justify-between border-2 border-[#0b0710]"
+                title="Gire a Bola 8 na logo do menu inicial para trocar o tema de fundo"
               >
                 <div className="flex items-center gap-3.5">
-                  <span className="text-2xl">🎨</span>
+                  <span className="text-2xl">🎱</span>
                   <span>Tema de fundo:</span>
                 </div>
                 <span className="bg-[#12181a] px-3 py-1 rounded-xl border border-[#0b0710] text-[#f2b632] text-xs sm:text-sm font-black cacapa-stroke-sm truncate max-w-[210px]">
-                  {getBgThemeLabel()}
+                  Gire a Bola 8 no Menu!
                 </span>
-              </button>
+              </div>
 
               <button
                 onClick={() => {
@@ -1141,48 +1072,6 @@ export function PoolPage() {
               >
                 <span className="text-2xl">🔄</span>
                 <span>Voltar ao Menu Principal</span>
-              </button>
-
-              {isVox && (
-                <>
-                  <button
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      setIsAdminOpen(true);
-                    }}
-                    className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#4d1627] hover:bg-[#681e35] text-[#ffd36a] font-black flex items-center justify-between border-2 border-[#b52a4e] cursor-pointer transition-colors active:scale-98"
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <span className="text-2xl">🛠️</span>
-                      <span>Painel Debug & Admin</span>
-                    </div>
-                    <span className="text-[10px] bg-black/40 px-2 py-0.5 rounded font-mono text-slate-300">
-                      ↑↑↓↓←→←→
-                    </span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      navigate('/dashboard');
-                    }}
-                    className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl bg-[#3b1d60] hover:bg-[#522986] text-[#ffd36a] font-black flex items-center gap-3.5 border-2 border-[#8b3dff] cursor-pointer transition-colors active:scale-98"
-                  >
-                    <span className="text-2xl">📊</span>
-                    <span>Painel Vox (/dashboard)</span>
-                  </button>
-                </>
-              )}
-
-              <button
-                onClick={() => {
-                  logout();
-                  navigate('/login');
-                }}
-                className="w-full text-left px-4 py-3 sm:py-3.5 rounded-2xl hover:bg-[#2d373e] text-slate-400 font-black flex items-center gap-3.5 border-2 border-transparent cursor-pointer transition-colors active:scale-98"
-              >
-                <span className="text-2xl">🚪</span>
-                <span>Sair da Conta ({user?.name || 'Desconectar'})</span>
               </button>
             </div>
 
@@ -1228,6 +1117,12 @@ export function PoolPage() {
             handleToggleMusic();
           }}
           isMuted={isMuted && isMusicMuted}
+          onThemeChange={(themeIdx) => {
+            setSelectedBgTheme(themeIdx.toString());
+            try {
+              localStorage.setItem('cacapa_selected_bg_theme', themeIdx.toString());
+            } catch {}
+          }}
         />
 
         <EncyclopediaModal

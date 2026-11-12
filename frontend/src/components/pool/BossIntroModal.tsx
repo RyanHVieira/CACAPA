@@ -53,6 +53,10 @@ export const BossIntroModal: React.FC<BossIntroModalProps> = ({ isOpen, onClose,
             <div>
               <strong className="text-[#e0392b] text-base sm:text-lg">Pressão Máxima:</strong>
               <div className="text-[#9fb4a8] mt-0.5">Faltas penalizam severamente e você tem menos tacadas de margem.</div>
+              <div className="text-[#4ade80] font-bold text-xs sm:text-sm mt-1 flex items-center gap-1.5">
+                <span>✨</span>
+                <span>Faltas anteriores resetadas (0 / {engine.maxFouls})!</span>
+              </div>
             </div>
           </div>
 

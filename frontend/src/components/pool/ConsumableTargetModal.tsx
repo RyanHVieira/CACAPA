@@ -8,7 +8,7 @@ interface ConsumableTargetModalProps {
   consumable: ConsumableDef | null;
   engine: CacapaPoolEngine;
   onClose: () => void;
-  onSelectBall: (ballNumber: number) => void;
+  onSelectBall: (ballNumber: number, ballIndex?: number) => void;
 }
 
 export const ConsumableTargetModal: React.FC<ConsumableTargetModalProps> = ({
@@ -20,7 +20,14 @@ export const ConsumableTargetModal: React.FC<ConsumableTargetModalProps> = ({
 }) => {
   if (!isOpen || !consumable) return null;
 
-  const deck = engine.deck;
+  const deck: DeckBallItem[] = (engine.deck && engine.deck.length > 0)
+    ? engine.deck
+    : [1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => ({
+        id: `deck-${num}`,
+        number: num,
+        isStripe: num === 8 ? false : num > 8,
+        enhancement: null,
+      }));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200 select-none font-cacapa">
@@ -61,7 +68,7 @@ export const ConsumableTargetModal: React.FC<ConsumableTargetModalProps> = ({
             return (
               <button
                 key={`${ball.id}-${idx}`}
-                onClick={() => onSelectBall(ball.number)}
+                onClick={() => onSelectBall(ball.number, idx)}
                 className="group relative flex flex-col items-center justify-between p-3 rounded-2xl bg-[#232b30] hover:bg-[#2e3940] border-[3px] border-[#0b0710] hover:border-[#f2b632] shadow-[0_4px_0_rgba(0,0,0,0.45)] hover:shadow-[0_6px_0_rgba(0,0,0,0.5)] cursor-pointer active:scale-95 transition-all"
               >
                 <div className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">

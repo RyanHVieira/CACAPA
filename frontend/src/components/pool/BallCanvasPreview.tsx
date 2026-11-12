@@ -30,8 +30,17 @@ export const BallCanvasPreview: React.FC<BallCanvasPreviewProps> = ({
 
     let animId: number;
     let t = Math.random() * 100;
+    let lastTick = 0;
+    const FRAME_MS = 1000 / 30; // 30fps para preview de bola animada
 
-    const render = () => {
+    const render = (now: number) => {
+      if (animate) {
+        animId = requestAnimationFrame(render);
+        if (document.hidden) return;
+        if (now - lastTick < FRAME_MS - 1) return;
+        lastTick = now;
+      }
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.save();
       ctx.translate(canvas.width / 2, canvas.height / 2);
@@ -54,18 +63,21 @@ export const BallCanvasPreview: React.FC<BallCanvasPreviewProps> = ({
         shadow,
         shadowOffsetX: 2,
         shadowOffsetY: 3,
-        res: 2.2,
+        res: 1.5,
       });
 
       ctx.restore();
 
       if (animate) {
         t += 1;
-        animId = requestAnimationFrame(render);
       }
     };
 
-    render();
+    if (animate) {
+      animId = requestAnimationFrame(render);
+    } else {
+      render(0);
+    }
 
     return () => {
       if (animId) cancelAnimationFrame(animId);

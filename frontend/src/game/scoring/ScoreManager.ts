@@ -161,6 +161,19 @@ export class ScoreManager {
 
         const mod = (ball.enhancement as unknown as { id?: string })?.id || ballMods[ball.number];
     if (mod) {
+      if (mod === 'gold') {
+        deltaMoney += 4;
+        messages.push('+$4 (Bola Dourada)');
+      }
+      if (mod === 'silver') {
+        dc += 60;
+        messages.push('+60 Fichas (Prata)');
+      }
+      if (mod === 'lucky') {
+        if (Math.random() < 0.25) dm += 25;
+        if (Math.random() < 0.125) deltaMoney += 10;
+        dc += 15;
+      }
       if (mod === 'pel') dm += 6;
       if (mod === '67') dc += 67;
       if (mod === 'riz') deltaMoney += 2;
@@ -204,6 +217,7 @@ export class ScoreManager {
         let multMult = pxm;
     if (mod === 'lem' && sidesTouched >= 3) multMult *= 2;
     if (mod === 'sig') multMult *= 1.5;
+    if (mod === 'silver') multMult *= 1.5;
     if (mod === 'bco' && activeBallsRemaining <= 0) multMult *= 2;
     if (cueId === 'mot' && potIndex >= 3) multMult *= 1.5;
 

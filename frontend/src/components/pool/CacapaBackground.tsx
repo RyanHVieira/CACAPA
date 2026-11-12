@@ -31,6 +31,8 @@ export const CacapaBackground: React.FC<CacapaBackgroundProps> = ({
 
     let animId: number;
     let t = 0;
+    let lastTick = 0;
+    const FRAME_MS = 1000 / 30; // 30fps é ideal para o swirl ambiente
 
     const handleResize = () => {
       if (!canvas) return;
@@ -41,16 +43,19 @@ export const CacapaBackground: React.FC<CacapaBackgroundProps> = ({
     handleResize();
     window.addEventListener('resize', handleResize);
 
-    const render = () => {
+    const render = (now: number) => {
+      animId = requestAnimationFrame(render);
+      if (document.hidden) return;
+      if (now - lastTick < FRAME_MS - 1) return;
+      lastTick = now;
+
       if (!rendererRef.current || !canvasRef.current) return;
       const ctx = canvasRef.current.getContext('2d');
       if (!ctx) return;
 
-            t += 0.018;
+      t += 0.018;
       rendererRef.current.setTime(t);
-
-            rendererRef.current.render(ctx, canvasRef.current.width, canvasRef.current.height);
-      animId = requestAnimationFrame(render);
+      rendererRef.current.render(ctx, canvasRef.current.width, canvasRef.current.height);
     };
 
     animId = requestAnimationFrame(render);

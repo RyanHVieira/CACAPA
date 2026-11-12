@@ -4,6 +4,8 @@ import { CacapaBackground } from './CacapaBackground';
 import { CueManager } from '../../game/cues/CueManager';
 import { CueSelectionModal } from './CueSelectionModal';
 import { NM, TG } from '../../game/config/gameConfig';
+import { AMBIENT_THEMES } from '../../game/scenes/TableScenes';
+import { SoundManager } from '../../game/audio/SoundManager';
 
 interface TitleScreenModalProps {
   isOpen: boolean;
@@ -14,6 +16,7 @@ interface TitleScreenModalProps {
   onOpenOptions: () => void;
   onToggleSound?: () => void;
   isMuted?: boolean;
+  onThemeChange?: (themeIndex: number) => void;
 }
 
 export const TitleScreenModal: React.FC<TitleScreenModalProps> = ({
@@ -25,29 +28,45 @@ export const TitleScreenModal: React.FC<TitleScreenModalProps> = ({
   onOpenOptions,
   onToggleSound,
   isMuted = false,
+  onThemeChange,
 }) => {
   const [isCueModalOpen, setIsCueModalOpen] = useState(false);
-
-  if (!isOpen) return null;
 
   const highestStage = CueManager.getHighestStageReached();
   const highestStageName = NM[highestStage] || 'Boteco do Zé';
   const highestStageTarget = TG[highestStage] || 120;
 
-  const savedBgTheme = (() => {
+  // Tema de fundo atual selecionado através do giro da Bola 8
+  const [currentThemeIndex, setCurrentThemeIndex] = useState<number>(() => {
     try {
-      return localStorage.getItem('cacapa_selected_bg_theme') || 'auto';
-    } catch {
-      return 'auto';
-    }
-  })();
-  let effectiveTableIndex = highestStage % 10;
-  if (savedBgTheme !== 'auto') {
-    const parsed = parseInt(savedBgTheme, 10);
-    if (!isNaN(parsed) && parsed >= 0 && parsed <= highestStage) {
-      effectiveTableIndex = parsed % 10;
-    }
-  }
+      const saved = localStorage.getItem('cacapa_selected_bg_theme');
+      if (saved && saved !== 'auto') {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 0) {
+          return parsed % AMBIENT_THEMES.length;
+        }
+      }
+    } catch {}
+    return highestStage % AMBIENT_THEMES.length;
+  });
+
+  if (!isOpen) return null;
+
+  const handleSpinCycle = (direction: 1 | -1) => {
+    setCurrentThemeIndex((prev) => {
+      const next = (prev + direction + AMBIENT_THEMES.length) % AMBIENT_THEMES.length;
+      try {
+        localStorage.setItem('cacapa_selected_bg_theme', next.toString());
+      } catch {}
+      try {
+        SoundManager.getInstance().playTick(next);
+      } catch {}
+      if (onThemeChange) {
+        onThemeChange(next);
+      }
+      return next;
+    });
+  };
 
   const handleStartGame = (cueIdToUse?: string) => {
     const cueId = cueIdToUse || CueManager.getSelectedCueId() || selectedCueId || 'iniciante';
@@ -59,12 +78,16 @@ export const TitleScreenModal: React.FC<TitleScreenModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-between items-center bg-black/45 backdrop-blur-[2px] p-4 sm:p-8 animate-in fade-in duration-300 font-cacapa select-none overflow-hidden">
-      {/* Fundo Swirl que segue a fase mais alta alcançada pelo jogador (ou o tema escolhido) */}
-      <CacapaBackground tableIndex={effectiveTableIndex} />
+      {/* Fundo Swirl dinâmico que alterna ao girar a Bola 8 */}
+      <CacapaBackground tableIndex={currentThemeIndex} />
 
-      {/* Topo: Logo Ampliada com a Bola 8 Rotativa no centro do sprite */}
+      {/* Topo: Logo com a Bola 8 interativa que pode ser girada com o mouse para trocar o fundo */}
       <div className="w-full pt-2 sm:pt-6 flex flex-col items-center z-10 animate-cacapa-bob">
-        <CacapaLogoWithBall size="lg" className="drop-shadow-[0_16px_36px_rgba(0,0,0,0.95)]" />
+        <CacapaLogoWithBall
+          size="lg"
+          className="drop-shadow-[0_16px_36px_rgba(0,0,0,0.95)]"
+          onSpinCycle={handleSpinCycle}
+        />
 
         <div className="mt-2 flex items-center gap-2">
           <span className="h-0.5 w-10 sm:w-20 bg-[#f2b632]/70" />
@@ -72,6 +95,15 @@ export const TitleScreenModal: React.FC<TitleScreenModalProps> = ({
             SINUCA ROGUELIKE
           </span>
           <span className="h-0.5 w-10 sm:w-20 bg-[#f2b632]/70" />
+        </div>
+
+        {/* Indicador de giro para troca de fundo */}
+        <div className="mt-2 px-3 py-1 rounded-full bg-[#12181a]/90 border border-[#f2b632]/60 text-[#ffd36a] text-[11px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg">
+          <span className="animate-spin text-sm">🎱</span>
+          <span>Gire a bola para trocar o fundo:</span>
+          <span className="text-white bg-[#0b0710] px-2 py-0.5 rounded border border-[#f2b632]/40">
+            Mesa {currentThemeIndex + 1} ({AMBIENT_THEMES[currentThemeIndex]?.title})
+          </span>
         </div>
       </div>
 
@@ -124,12 +156,12 @@ export const TitleScreenModal: React.FC<TitleScreenModalProps> = ({
         onClose={() => setIsCueModalOpen(false)}
       />
 
-      {/* Rodapé: Badge de Progresso / Recorde do Jogador */}
+      {/* Rodapé: Badge com o tema ativo e recorde */}
       <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-2 z-10 pt-4 border-t border-black/40 text-xs">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#12181a]/90 border border-[#0b0710] shadow-md text-[#9fb4a8]">
           <span className="text-base">🏆</span>
           <span>
-            Tema do Fundo: <strong className="text-[#f2b632]">Mesa {highestStage + 1} ({highestStageName})</strong> • Meta: {highestStageTarget.toLocaleString('pt-BR')} pts
+            Tema do Fundo: <strong className="text-[#f2b632]">Mesa {currentThemeIndex + 1} ({AMBIENT_THEMES[currentThemeIndex]?.title})</strong> • Meta Recorde: {highestStageTarget.toLocaleString('pt-BR')} pts ({highestStageName})
           </span>
         </div>
 

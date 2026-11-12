@@ -93,6 +93,7 @@ export function settleBall(ball: Ball, snap: boolean = false): boolean {
   const ay = n < 1e-4 ? 0 : -x / n;
 
   ball.M = rotM(ball.M, ax * st, ay * st, 0);
+  ball.isDirty = true;
 
   return false;
 }
@@ -205,6 +206,7 @@ export function drawBallTexture(
         continue;
       }
 
+      const sqrtR2 = Math.sqrt(r2);
       const z = Math.sqrt(Math.max(0, 1 - r2));
 
       // Ponto da esfera no referencial da bola.
@@ -232,7 +234,7 @@ export function drawBallTexture(
       d[p + 2] = c[2] * f;
 
       // Borda suavizada.
-      const a = (1 - Math.sqrt(r2)) * r * res + 0.5;
+      const a = (1 - sqrtR2) * r * res + 0.5;
       d[p + 3] = Math.min(1, Math.max(0, a)) * 255;
     }
   }
@@ -342,6 +344,8 @@ export function draw3DBall(
     else if (ball.enhancement.id === 'gri') baseColor = '#18141e';
     else if (ball.enhancement.id === 'lem') baseColor = '#deac38';
     else if (ball.enhancement.id === 'jaw') baseColor = '#142864';
+    else if (ball.enhancement.id === 'gold') baseColor = '#fbbf24';
+    else if (ball.enhancement.id === 'silver') baseColor = '#cbd5e1';
   }
 
   // 4. Esfera (textura por pixel: faixa, disco do número, bola branca).
@@ -364,6 +368,29 @@ export function draw3DBall(
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.stroke();
+
+  // 8. Efeitos visuais e sobreposições (após a esfera para que sparkles fiquem visíveis)
+  const enh = ball.enhancement;
+  if (enh) {
+    if (typeof enh.drawEffect === 'function') {
+      const proxyBall = (ball instanceof Ball ? ball : { ...ball, radius: r }) as Ball;
+      enh.drawEffect(ctx, proxyBall);
+    } else if (enh.id === 'gold') {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, r + 3, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath();
+      ctx.arc(r * 0.65, -r * 0.65, 2, 0, Math.PI * 2);
+      ctx.arc(-r * 0.65, r * 0.65, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
 }
 
 export class Ball {
@@ -400,6 +427,10 @@ export class Ball {
   public distanceTraveled: number = 0;
   public sidesHitMask: number = 0;
   public isPossessed: boolean = false;
+
+  public isDirty: boolean = true;
+  private cachedCanvas: HTMLCanvasElement | null = null;
+  private cachedCtx: CanvasRenderingContext2D | null = null;
 
   constructor(
     id: number,
@@ -453,10 +484,12 @@ export class Ball {
   applyImpulse(ix: number, iy: number): void {
     this.vel.x += ix;
     this.vel.y += iy;
+    this.isDirty = true;
   }
 
   update(friction: number, dt: number): void {
     if (this.isSinking) {
+      this.isDirty = true;
       if (this.targetPocketPos) {
         this.pos.x += (this.targetPocketPos.x - this.pos.x) * 0.28;
         this.pos.y += (this.targetPocketPos.y - this.pos.y) * 0.28;
@@ -495,6 +528,7 @@ export class Ball {
 
     if (Math.abs(rollSpeedX) > 1e-5 || Math.abs(rollSpeedY) > 1e-5) {
       this.M = rotM(this.M, rollSpeedX, rollSpeedY, 0);
+      this.isDirty = true;
     }
 
     settleBall(this, false);
@@ -520,6 +554,7 @@ export class Ball {
   pocket(pocketX?: number, pocketY?: number): void {
     if (!this.isPocketed && !this.isSinking) {
       this.isSinking = true;
+      this.isDirty = true;
 
       this.vel.set(0, 0);
 
@@ -538,6 +573,7 @@ export class Ball {
 
     this.isPocketed = false;
     this.isSinking = false;
+    this.isDirty = true;
 
     this.sinkScale = 1.0;
     this.sinkOpacity = 1.0;
@@ -555,7 +591,6 @@ export class Ball {
     if (this.isPocketed) return;
 
     ctx.save();
-
     ctx.translate(this.pos.x, this.pos.y);
 
     if (this.isSinking) {
@@ -563,12 +598,45 @@ export class Ball {
       ctx.globalAlpha = this.sinkOpacity;
     }
 
-    draw3DBall(ctx, this, this.radius, {
-      shadow: true,
-      shadowOffsetX: 2.5,
-      shadowOffsetY: 3.5,
-      res: 3,
-    });
+    // Se a bola estiver estacionária e sem afundar, reutiliza o sprite assado em cache
+    const isStationary = !this.isSinking && this.vel.x === 0 && this.vel.y === 0;
+    const padding = 12;
+    const size = Math.ceil((this.radius + padding) * 2);
+
+    if (isStationary && !this.isDirty && this.cachedCanvas) {
+      ctx.drawImage(this.cachedCanvas, -size / 2, -size / 2);
+      ctx.restore();
+      return;
+    }
+
+    if (!this.cachedCanvas) {
+      this.cachedCanvas = document.createElement('canvas');
+      this.cachedCanvas.width = size;
+      this.cachedCanvas.height = size;
+      this.cachedCtx = this.cachedCanvas.getContext('2d');
+    }
+
+    if (isStationary && this.cachedCtx) {
+      this.cachedCtx.clearRect(0, 0, size, size);
+      this.cachedCtx.save();
+      this.cachedCtx.translate(size / 2, size / 2);
+      draw3DBall(this.cachedCtx, this, this.radius, {
+        shadow: true,
+        shadowOffsetX: 2.5,
+        shadowOffsetY: 3.5,
+        res: 2.5,
+      });
+      this.cachedCtx.restore();
+      this.isDirty = false;
+      ctx.drawImage(this.cachedCanvas, -size / 2, -size / 2);
+    } else {
+      draw3DBall(ctx, this, this.radius, {
+        shadow: true,
+        shadowOffsetX: 2.5,
+        shadowOffsetY: 3.5,
+        res: 2.0,
+      });
+    }
 
     ctx.restore();
   }

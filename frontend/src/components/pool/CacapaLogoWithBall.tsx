@@ -5,6 +5,7 @@ interface CacapaLogoWithBallProps {
   size?: 'sm' | 'md' | 'lg';
   /** PNG pixel art 200x62 com o vão no meio (coloque em /public). */
   logoSrc?: string;
+  onSpinCycle?: (direction: 1 | -1) => void;
 }
 
 // ---------------------------------------------------------------
@@ -244,8 +245,27 @@ export const CacapaLogoWithBall: React.FC<CacapaLogoWithBallProps> = ({
   className = '',
   size = 'md',
   logoSrc = '/cacapa-logo.png',
+  onSpinCycle,
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const onSpinCycleRef = useRef(onSpinCycle);
+  onSpinCycleRef.current = onSpinCycle;
+
+  // Física de rotação da Bola 8 com velocidade acumulativa
+  const thRef = useRef<number>(0);
+  const velocityRef = useRef<number>(0.035);
+  const accumulatedDeltaRef = useRef<number>(0);
+  const lastCycleTimeRef = useRef<number>(0);
+
+  // Estados de controle do ponteiro
+  const isDraggingRef = useRef<boolean>(false);
+  const isHoveredRef = useRef<boolean>(false);
+  const lastPointerXRef = useRef<number>(0);
+  const lastPointerYRef = useRef<number>(0);
+  const lastPointerTimeRef = useRef<number>(0);
+  const dragDistanceRef = useRef<number>(0);
 
   const maxWidthClass =
     size === 'sm'
@@ -253,6 +273,113 @@ export const CacapaLogoWithBall: React.FC<CacapaLogoWithBallProps> = ({
       : size === 'md'
       ? 'max-w-[560px] sm:max-w-[680px]'
       : 'max-w-[680px] sm:max-w-[880px] md:max-w-[1040px]';
+
+  const checkCycle = () => {
+    const ROTATION_STEP = Math.PI * 1.5;
+    const now = performance.now();
+    if (now - lastCycleTimeRef.current < 110) return;
+
+    if (accumulatedDeltaRef.current >= ROTATION_STEP) {
+      accumulatedDeltaRef.current = 0;
+      lastCycleTimeRef.current = now;
+      onSpinCycleRef.current?.(1);
+    } else if (accumulatedDeltaRef.current <= -ROTATION_STEP) {
+      accumulatedDeltaRef.current = 0;
+      lastCycleTimeRef.current = now;
+      onSpinCycleRef.current?.(-1);
+    }
+  };
+
+  const getLogicalCoords = (clientX: number, clientY: number) => {
+    if (!containerRef.current) return { x: 0, y: 0, dist: 999 };
+    const rect = containerRef.current.getBoundingClientRect();
+    const scaleX = VW / rect.width;
+    const scaleY = VH / rect.height;
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+
+    // Centro lógico da bola: 286, 84
+    const dist = Math.hypot(x - 286, y - 84);
+    return { x, y, dist };
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const { dist } = getLogicalCoords(e.clientX, e.clientY);
+    if (dist <= 56) {
+      isDraggingRef.current = true;
+      dragDistanceRef.current = 0;
+      lastPointerXRef.current = e.clientX;
+      lastPointerYRef.current = e.clientY;
+      lastPointerTimeRef.current = performance.now();
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      } catch {}
+      if (containerRef.current) {
+        containerRef.current.style.cursor = 'grabbing';
+      }
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const { dist } = getLogicalCoords(e.clientX, e.clientY);
+    const isOver = dist <= 56;
+    isHoveredRef.current = isOver;
+
+    if (isDraggingRef.current) {
+      const now = performance.now();
+      const dt = Math.max(1, now - lastPointerTimeRef.current);
+      const dx = e.clientX - lastPointerXRef.current;
+      dragDistanceRef.current += Math.abs(dx);
+
+      const dragDelta = dx * 0.045;
+      const flickSpeed = (dx / dt) * 0.45;
+
+      thRef.current += dragDelta;
+      accumulatedDeltaRef.current += dragDelta;
+
+      // Velocidade ACUMULATIVA: cada puxão e movimento com o mouse adiciona velocidade
+      velocityRef.current = Math.max(-1.8, Math.min(1.8, velocityRef.current + dragDelta * 0.35 + flickSpeed * 0.15));
+
+      lastPointerXRef.current = e.clientX;
+      lastPointerYRef.current = e.clientY;
+      lastPointerTimeRef.current = now;
+
+      checkCycle();
+    } else {
+      if (containerRef.current) {
+        containerRef.current.style.cursor = isOver ? 'grab' : 'default';
+      }
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {}
+
+      // Se foi apenas um toque/clique rápido, dá um impulso adicional de giro acumulativo
+      if (dragDistanceRef.current < 6) {
+        velocityRef.current = Math.max(-1.8, Math.min(1.8, velocityRef.current + 0.38));
+      }
+
+      const { dist } = getLogicalCoords(e.clientX, e.clientY);
+      if (containerRef.current) {
+        containerRef.current.style.cursor = dist <= 56 ? 'grab' : 'default';
+      }
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    const { dist } = getLogicalCoords(e.clientX, e.clientY);
+    if (dist <= 75) {
+      e.preventDefault();
+      // O scroll da roda do mouse também acumula velocidade!
+      const wheelDelta = -Math.sign(e.deltaY) * 0.22;
+      velocityRef.current = Math.max(-1.8, Math.min(1.8, velocityRef.current + wheelDelta));
+    }
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -329,9 +456,14 @@ export const CacapaLogoWithBall: React.FC<CacapaLogoWithBallProps> = ({
 
     let animId = 0;
     let startMs = 0;
+    let lastTick = 0;
+    const FRAME_MS = 1000 / 30; // 30fps para a logo pixel-art retrô
 
     const render = (now: number) => {
       animId = requestAnimationFrame(render);
+      if (document.hidden) return;
+      if (now - lastTick < FRAME_MS - 1) return;
+      lastTick = now;
 
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.clearRect(0, 0, canvas.width, canvas.height);
@@ -422,7 +554,7 @@ export const CacapaLogoWithBall: React.FC<CacapaLogoWithBallProps> = ({
         );
       }
 
-      // Bola 8 girando no vão da logo.
+      // Bola 8 girando no vão da logo com física acumulativa
       const bx = x0 + TTX * TTS;
       const by = y0 + TTY * TTS + q2(ttWave(TTX, T));
 
@@ -434,7 +566,19 @@ export const CacapaLogoWithBall: React.FC<CacapaLogoWithBallProps> = ({
 
       g.globalAlpha = ga;
 
-      renderBall8(ballData, T * 0.035);
+      // Atualização da física quando não estiver arrastando manualmente
+      if (!isDraggingRef.current) {
+        if (Math.abs(velocityRef.current) > 0.035) {
+          velocityRef.current *= 0.968; // inércia suave
+        } else {
+          velocityRef.current = velocityRef.current * 0.95 + 0.035 * 0.05;
+        }
+        thRef.current += velocityRef.current;
+        accumulatedDeltaRef.current += velocityRef.current;
+        checkCycle();
+      }
+
+      renderBall8(ballData, thRef.current);
       ballCtx.putImageData(ballData, 0, 0);
 
       g.drawImage(
@@ -444,6 +588,20 @@ export const CacapaLogoWithBall: React.FC<CacapaLogoWithBallProps> = ({
         TTB * TTS,
         TTB * TTS
       );
+
+      // Brilho / aura dourada quando a bola está com velocidade acumulada ou hovered
+      const speed = Math.abs(velocityRef.current);
+      if (speed > 0.08 || isHoveredRef.current) {
+        g.save();
+        const glowAlpha = Math.min(0.65, (speed - 0.035) * 0.7 + (isHoveredRef.current ? 0.3 : 0));
+        g.globalAlpha = glowAlpha * ga;
+        g.strokeStyle = '#f2b632';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(bx, by, TTR * TTS + 2, 0, Math.PI * 2);
+        g.stroke();
+        g.restore();
+      }
 
       g.restore();
     };
@@ -455,8 +613,15 @@ export const CacapaLogoWithBall: React.FC<CacapaLogoWithBallProps> = ({
 
   return (
     <div
-      className={`relative w-full ${maxWidthClass} mx-auto select-none ${className}`}
+      ref={containerRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onWheel={handleWheel}
+      className={`relative w-full ${maxWidthClass} mx-auto select-none touch-none ${className}`}
       style={{ aspectRatio: `${VW} / ${VH}` }}
+      title="Gire a Bola 8 com o mouse (ou arraste / use a roda) para trocar o tema!"
     >
       <canvas
         ref={canvasRef}

@@ -428,6 +428,13 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
     let lastTime = performance.now();
 
     const loop = (currentTime: number) => {
+      animId = requestAnimationFrame(loop);
+
+      if (document.hidden) {
+        lastTime = currentTime;
+        return;
+      }
+
       timeRef.current += 0.016;
       const time = timeRef.current;
       const dt = Math.min(0.033, (currentTime - lastTime) / 1000);
@@ -588,8 +595,6 @@ export const PoolCanvas: React.FC<PoolCanvasProps> = ({
       }
 
       ctx.restore();
-
-      animId = requestAnimationFrame(loop);
     };
 
     animId = requestAnimationFrame(loop);

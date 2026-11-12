@@ -282,6 +282,11 @@ export class CacapaPoolEngine {
     this.reracksRemaining = 2;
     this.notificationMessage = `Mesa ${this.tableIndex + 1}: ${NM[this.tableIndex]} — Meta: ${this.targetScore} pts`;
 
+    // Em cada Boss Blind, as faltas acumuladas são resetadas
+    if (BOSS.includes(this.tableIndex)) {
+      this.foulCount = 0;
+    }
+
     // Taco de gelo: as bolas deslizam mais (fricção reduzida)
     this.physics.friction = this.cueId === 'gelo' ? 0.995 : 0.988;
 
@@ -354,6 +359,11 @@ export class CacapaPoolEngine {
         }
         if (deckItem.enhancement) {
           ball.enhancement = BallEnhancementCatalog.getById(deckItem.enhancement.id);
+          if (deckItem.enhancement.id === 'gold') {
+            ball.color = '#fbbf24';
+          } else if (deckItem.enhancement.id === 'silver') {
+            ball.color = '#cbd5e1';
+          }
         }
         this.balls.push(ball);
       }
@@ -442,7 +452,7 @@ export class CacapaPoolEngine {
       this.particleSystem.pop(
         pocket.x,
         pocket.y - 24,
-        `FALTA! ${this.foulCount}/${MAXF}`,
+        `FALTA! ${this.foulCount}/${this.maxFouls}`,
         '#ff4b3a',
         1.3
       );
@@ -496,6 +506,10 @@ export class CacapaPoolEngine {
 
     if (ball.cushionBounces > 0) {
       this.particleSystem.pop(pocket.x, pocket.y - 50, 'TABELA!', '#3ec1d3', 0.9);
+    }
+
+    if (potRes.deltaMoney > 0) {
+      this.particleSystem.pop(pocket.x, pocket.y - 45, `+$${potRes.deltaMoney} 💰`, '#fbbf24', 1.3);
     }
   }
 
@@ -756,14 +770,14 @@ export class CacapaPoolEngine {
     return { success: true, value: val, message: `${name} vendido por $${val}!` };
   }
 
-  public useConsumable(targetBallNumber?: number): { success: boolean; message: string } {
+  public useConsumable(targetBallNumber?: number, targetBallIndex?: number): { success: boolean; message: string } {
     if (!this.ownedConsumable) {
       return { success: false, message: 'Nenhum consumível equipado!' };
     }
 
     const item = this.ownedConsumable;
 
-    if (item.targetType === 'ball' && targetBallNumber === undefined) {
+    if (item.targetType === 'ball' && targetBallNumber === undefined && targetBallIndex === undefined) {
       return { success: false, message: 'Selecione uma bola como alvo para este consumível!' };
     }
 
@@ -802,9 +816,11 @@ export class CacapaPoolEngine {
       }
 
       case 'polimento_dourado': {
-        const deckBall = this.deck.find((b) => b.number === targetBallNumber);
+        const deckBall = (targetBallIndex !== undefined && this.deck[targetBallIndex])
+          ? this.deck[targetBallIndex]
+          : this.deck.find((b) => b.number === targetBallNumber);
         if (!deckBall) {
-          return { success: false, message: `Bola #${targetBallNumber} não encontrada!` };
+          return { success: false, message: `Bola #${targetBallNumber ?? targetBallIndex} não encontrada!` };
         }
         deckBall.enhancement = {
           id: 'gold',
@@ -814,23 +830,27 @@ export class CacapaPoolEngine {
           color: '#fbbf24',
           cost: 4,
         };
-        const tableBall = this.balls.find((b) => !b.isCue && b.number === targetBallNumber);
+        const tableBall = this.balls.find((b) => !b.isCue && b.number === deckBall.number);
         if (tableBall) {
           tableBall.enhancement = BallEnhancementCatalog.getById('gold');
+          tableBall.color = '#fbbf24';
+          tableBall.isDirty = true;
         }
         this.syncDeckToEngine();
         this.particleSystem.spark(cx, cy, 32, '#fbbf24');
-        this.particleSystem.pop(cx, cy - 25, `BOLA #${targetBallNumber} DE OURO!`, '#fbbf24', 1.3);
+        this.particleSystem.pop(cx, cy - 25, `BOLA #${deckBall.number} DE OURO!`, '#fbbf24', 1.3);
         this.sound.playScoreImpact();
         this.ownedConsumable = null;
-        this.notificationMessage = `Bola #${targetBallNumber} transformada em Bola de Ouro (+$4)!`;
-        return { success: true, message: `Bola #${targetBallNumber} agora é Bola de Ouro!` };
+        this.notificationMessage = `Bola #${deckBall.number} transformada em Bola de Ouro (+$4)!`;
+        return { success: true, message: `Bola #${deckBall.number} agora é Bola de Ouro!` };
       }
 
       case 'polimento': {
-        const deckBall = this.deck.find((b) => b.number === targetBallNumber);
+        const deckBall = (targetBallIndex !== undefined && this.deck[targetBallIndex])
+          ? this.deck[targetBallIndex]
+          : this.deck.find((b) => b.number === targetBallNumber);
         if (!deckBall) {
-          return { success: false, message: `Bola #${targetBallNumber} não encontrada!` };
+          return { success: false, message: `Bola #${targetBallNumber ?? targetBallIndex} não encontrada!` };
         }
         const prevNum = deckBall.number;
         const newNum = Math.min(15, prevNum + 1);
@@ -848,6 +868,7 @@ export class CacapaPoolEngine {
             tableBall.isStriped = false;
             tableBall.color = '#16121c';
           }
+          tableBall.isDirty = true;
         }
         this.syncDeckToEngine();
         this.particleSystem.spark(cx, cy, 26, '#60a5fa');
@@ -859,9 +880,11 @@ export class CacapaPoolEngine {
       }
 
       case 'polimento_arco_iris': {
-        const deckBall = this.deck.find((b) => b.number === targetBallNumber);
+        const deckBall = (targetBallIndex !== undefined && this.deck[targetBallIndex])
+          ? this.deck[targetBallIndex]
+          : this.deck.find((b) => b.number === targetBallNumber);
         if (!deckBall) {
-          return { success: false, message: `Bola #${targetBallNumber} não encontrada!` };
+          return { success: false, message: `Bola #${targetBallNumber ?? targetBallIndex} não encontrada!` };
         }
         const allEnh = BallEnhancementCatalog.getAll();
         const randEnh = allEnh[Math.floor(Math.random() * allEnh.length)];
@@ -873,17 +896,20 @@ export class CacapaPoolEngine {
           color: randEnh.color,
           cost: randEnh.cost,
         };
-        const tableBall = this.balls.find((b) => !b.isCue && b.number === targetBallNumber);
+        const tableBall = this.balls.find((b) => !b.isCue && b.number === deckBall.number);
         if (tableBall) {
           tableBall.enhancement = randEnh;
+          if (randEnh.id === 'gold') tableBall.color = '#fbbf24';
+          else if (randEnh.id === 'silver') tableBall.color = '#cbd5e1';
+          tableBall.isDirty = true;
         }
         this.syncDeckToEngine();
         this.particleSystem.spark(cx, cy, 35, '#c084fc');
         this.particleSystem.pop(cx, cy - 25, `${randEnh.name}!`, '#c084fc', 1.3);
         this.sound.playScoreImpact();
         this.ownedConsumable = null;
-        this.notificationMessage = `Bola #${targetBallNumber} recebeu ${randEnh.name}!`;
-        return { success: true, message: `Bola #${targetBallNumber} recebeu ${randEnh.name}!` };
+        this.notificationMessage = `Bola #${deckBall.number} recebeu ${randEnh.name}!`;
+        return { success: true, message: `Bola #${deckBall.number} recebeu ${randEnh.name}!` };
       }
 
       default:

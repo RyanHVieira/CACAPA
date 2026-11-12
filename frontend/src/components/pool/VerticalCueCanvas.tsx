@@ -26,8 +26,15 @@ export const VerticalCueCanvas: React.FC<VerticalCueCanvasProps> = ({
 
     let animId: number;
     let t = 0;
+    let lastTick = 0;
+    const FRAME_MS = 1000 / 30; // 30fps para preview do taco
 
-    const render = () => {
+    const render = (now: number) => {
+      animId = requestAnimationFrame(render);
+      if (document.hidden) return;
+      if (now - lastTick < FRAME_MS - 1) return;
+      lastTick = now;
+
       t += 0.03;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -92,11 +99,9 @@ export const VerticalCueCanvas: React.FC<VerticalCueCanvasProps> = ({
       ctx.restore();
 
       ctx.restore();
-
-      animId = requestAnimationFrame(render);
     };
 
-    render();
+    animId = requestAnimationFrame(render);
 
     return () => {
       if (animId) cancelAnimationFrame(animId);

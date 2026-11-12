@@ -2,9 +2,14 @@ import React, { useRef, useEffect, useState } from 'react';
 import { CacapaPoolEngine } from '../../game/engine/CacapaPoolEngine';
 import { Card } from '../../game/cards/Card';
 import { BallRackModal } from './BallRackModal';
+import { ConsumableTargetModal } from './ConsumableTargetModal';
 import { PAL } from '../../game/config/gameConfig';
 import { draw3DBall, createPreviewMatrix } from '../../game/models/Ball';
 import { BallCanvasPreview } from './BallCanvasPreview';
+import {
+  getJokerBottleTheme,
+  drawBottle,
+} from './JokerBottleCanvas';
 
 interface CacapaShopProps {
   engine: CacapaPoolEngine;
@@ -12,50 +17,6 @@ interface CacapaShopProps {
   onUpdate: () => void;
   onOpenMenu?: () => void;
 }
-
-const getJokerBottleTheme = (card: Card) => {
-  const id = card.id.toLowerCase();
-  if (id.includes('blue') || id.includes('chalk')) {
-    return { top: '#38bdf8', bottom: '#0284c7', glow: 'rgba(56, 189, 248, 0.75)' };
-  }
-  if (id.includes('groselha')) {
-    return { top: '#fb7185', bottom: '#e11d48', glow: 'rgba(251, 113, 133, 0.75)' };
-  }
-  if (id.includes('billiard') || id.includes('green')) {
-    return { top: '#4ade80', bottom: '#16a34a', glow: 'rgba(74, 222, 128, 0.75)' };
-  }
-  if (id.includes('eight') || id.includes('oito')) {
-    return { top: '#a5b4fc', bottom: '#4338ca', glow: 'rgba(165, 180, 252, 0.75)' };
-  }
-  if (id.includes('gold') || id.includes('pocket') || id.includes('digger')) {
-    return { top: '#fef08a', bottom: '#ca8a04', glow: 'rgba(254, 240, 138, 0.85)' };
-  }
-  if (id.includes('baron') || id.includes('tarot')) {
-    return { top: '#d8b4fe', bottom: '#7e22ce', glow: 'rgba(216, 180, 254, 0.75)' };
-  }
-  if (id.includes('bull') || id.includes('burning')) {
-    return { top: '#fdba74', bottom: '#ea580c', glow: 'rgba(253, 186, 116, 0.75)' };
-  }
-  return { top: '#fcd34d', bottom: '#b45309', glow: 'rgba(252, 211, 77, 0.75)' };
-};
-
-// Silhueta geométrica clássica da Garrafa de Vidro da Loja (BP)
-const BP = new Path2D();
-BP.moveTo(-22, 0);
-BP.lineTo(-24, -20);
-BP.bezierCurveTo(-38, -45, -38, -95, -36, -115);
-BP.bezierCurveTo(-35, -135, -20, -150, -10.5, -165);
-BP.lineTo(-10.5, -180);
-BP.lineTo(-13.5, -181);
-BP.lineTo(-13.5, -188);
-BP.lineTo(13.5, -188);
-BP.lineTo(13.5, -181);
-BP.lineTo(10.5, -180);
-BP.lineTo(10.5, -165);
-BP.bezierCurveTo(20, -150, 35, -135, 36, -115);
-BP.bezierCurveTo(38, -95, 38, -45, 24, -20);
-BP.lineTo(22, 0);
-BP.closePath();
 
 // --- SISTEMA PROCEDURAL DO CENÁRIO DO BOTECO (CANVAS 2D) ---
 
@@ -530,6 +491,7 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isBallRackOpen, setIsBallRackOpen] = useState(false);
   const [replaceOfferIndex, setReplaceOfferIndex] = useState<number | null>(null);
+  const [isConsumableTargetOpen, setIsConsumableTargetOpen] = useState(false);
 
   const engineRef = useRef(engine);
   engineRef.current = engine;
@@ -542,6 +504,30 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
 
   const openReplaceModalRef = useRef<(index: number) => void>(() => {});
   openReplaceModalRef.current = (idx: number) => setReplaceOfferIndex(idx);
+
+  const handleUseConsumable = () => {
+    const eng = engineRef.current;
+    const item = eng.ownedConsumable;
+    if (!item) return;
+    if (item.targetType === 'ball') {
+      setIsConsumableTargetOpen(true);
+    } else {
+      const res = eng.useConsumable();
+      toastRef.current = { text: res.message, time: timeRef.current + 90 };
+      onUpdateRef.current();
+    }
+  };
+
+  const handleSelectBallTarget = (ballNumber: number, ballIndex?: number) => {
+    const eng = engineRef.current;
+    setIsConsumableTargetOpen(false);
+    const res = eng.useConsumable(ballNumber, ballIndex);
+    toastRef.current = { text: res.message, time: timeRef.current + 90 };
+    onUpdateRef.current();
+  };
+
+  const handleUseConsumableRef = useRef<() => void>(handleUseConsumable);
+  handleUseConsumableRef.current = handleUseConsumable;
 
     const uiRef = useRef<UIElement[]>([]);
   const mouseRef = useRef<{ x: number; y: number }>({ x: -200, y: -200 });
@@ -557,6 +543,21 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
   const draggedJokerRef = useRef<{ index: number; startX: number; startY: number } | null>(null);
   const shopScaleRef = useRef<number>(1.0);
 
+  // Caches de gradiente e sprites para acelerar o loop de renderização da loja
+  const liqGradCache = useRef<Map<string, CanvasGradient>>(new Map());
+  const vGradRef = useRef<CanvasGradient | null>(null);
+  const shopBallCacheRef = useRef<
+    Map<
+      number,
+      {
+        canvas: HTMLCanvasElement;
+        ctx: CanvasRenderingContext2D;
+        lastOfferKey: string;
+        lastUpdateSec: number;
+      }
+    >
+  >(new Map());
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -564,7 +565,7 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
     if (!ctx) return;
 
     const updateSize = () => {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       const rect = canvas.getBoundingClientRect();
       const w = Math.round(rect.width || window.innerWidth);
       const h = Math.round(rect.height || window.innerHeight);
@@ -572,6 +573,8 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
         canvas.width = Math.round(w * dpr);
         canvas.height = Math.round(h * dpr);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        vGradRef.current = null;
+        liqGradCache.current.clear();
       }
     };
 
@@ -674,7 +677,15 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
     canvas.addEventListener('pointerup', handlePointerUp);
     canvas.addEventListener('pointerleave', handlePointerLeave);
 
-        const render = () => {
+        let lastTick = 0;
+    const FRAME_MS = 1000 / 60; // 60fps máx para fluidez e estabilidade
+
+    const render = (now: number) => {
+      animFrameRef.current = requestAnimationFrame(render);
+      if (document.hidden) return;
+      if (now - lastTick < FRAME_MS - 1) return;
+      lastTick = now;
+
       timeRef.current += 1;
       const t = timeRef.current;
       const eng = engineRef.current;
@@ -774,22 +785,44 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
         const cy = startY;
         const jCard = eng.ownedJokers[i];
 
-        if (!jCard) {
-          ctx.fillStyle = 'rgba(45, 20, 10, 0.45)';
+        // Slot sendo arrastado: mostra moldura fantasma tracejada
+        if (draggedJokerRef.current?.index === i) {
+          ctx.save();
+          ctx.fillStyle = 'rgba(251, 191, 36, 0.08)';
           ctx.beginPath();
-          ctx.roundRect(cx, cy, cardW, cardH, 10);
+          ctx.roundRect(cx, cy, cardW, cardH, 12);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 215, 0, 0.7)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.stroke();
+          ctx.restore();
+          continue;
+        }
+
+        if (!jCard) {
+          ctx.save();
+          ctx.fillStyle = 'rgba(25, 12, 8, 0.5)';
+          ctx.beginPath();
+          ctx.roundRect(cx, cy, cardW, cardH, 12);
           ctx.fill();
 
-          ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
-          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
+          ctx.lineWidth = 2;
           ctx.setLineDash([5, 5]);
           ctx.stroke();
           ctx.setLineDash([]);
 
-          ctx.font = `700 ${Math.round(12 * scale)}px Oswald, sans-serif`;
-          ctx.fillStyle = 'rgba(253, 224, 71, 0.7)';
+          ctx.font = `${Math.round(22 * scale)}px sans-serif`;
           ctx.textAlign = 'center';
-          ctx.fillText(`SLOT ${i + 1}`, cx + cardW / 2, cy + cardH / 2);
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+          ctx.fillText('🍾', cx + cardW / 2, cy + cardH * 0.42);
+
+          ctx.font = `700 ${Math.round(11 * scale)}px Oswald, sans-serif`;
+          ctx.fillStyle = 'rgba(253, 224, 71, 0.55)';
+          ctx.fillText(`SLOT ${i + 1}`, cx + cardW / 2, cy + cardH * 0.78);
+          ctx.restore();
           continue;
         }
 
@@ -797,28 +830,79 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
         const isCardHover = isIn(cardBox);
         if (isCardHover) hoveredJokerTip = jCard;
 
-        ctx.fillStyle = '#0b0710';
+        const isLegendary =
+          jCard.rarity === 'Lendária' ||
+          (jCard.rarity as string)?.toLowerCase().includes('lend') ||
+          jCard.edition !== 'Base';
+
+        // Nicho / moldura de madeira de fundo
+        ctx.save();
+        ctx.fillStyle = 'rgba(15, 8, 12, 0.55)';
         ctx.beginPath();
-        ctx.roundRect(cx + 3, cy + 5, cardW, cardH, 10);
+        ctx.roundRect(cx, cy, cardW, cardH, 12);
         ctx.fill();
 
-        ctx.fillStyle = '#fffdf5';
-        ctx.beginPath();
-        ctx.roundRect(cx, cy, cardW, cardH, 10);
-        ctx.fill();
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = jCard.rarity === 'Lendária' ? '#ffd700' : '#0b0710';
+        ctx.strokeStyle = isLegendary
+          ? '#ffd700'
+          : isCardHover
+          ? 'rgba(251, 191, 36, 0.85)'
+          : 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = isLegendary || isCardHover ? 2 : 1.5;
         ctx.stroke();
 
-        ctx.font = `${Math.round(30 * scale)}px sans-serif`;
+        // Porta-copos de apoio na base da garrafa
+        const bottleCenterX = cx + cardW / 2;
+        const bottleBaseY = cy + cardH - Math.round(18 * scale);
+
+        ctx.translate(bottleCenterX, bottleBaseY + Math.round(3 * scale));
+        ctx.fillStyle = '#0b0710';
+        ctx.beginPath();
+        ctx.ellipse(0, 2, Math.round(25 * scale), Math.round(8 * scale), 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const coasterGrad = ctx.createLinearGradient(0, -5, 0, 5);
+        coasterGrad.addColorStop(0, '#3b2314');
+        coasterGrad.addColorStop(1, '#1a0f08');
+        ctx.fillStyle = coasterGrad;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, Math.round(23 * scale), Math.round(7 * scale), 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = isLegendary ? '#ffd700' : '#854d0e';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.restore();
+
+        // Garrafa Coringa com física de flutuação e oscilação suave no hover
+        const floatY = isCardHover ? -Math.round(5 * scale) : 0;
+        const rot = isCardHover ? Math.sin(t * 0.15 + i) * 0.03 : 0;
+        const bScale = ((cardH * 0.74) / 200) * (isCardHover ? 1.05 : 1.0);
+
+        drawBottle(ctx, jCard, bottleCenterX, bottleBaseY, bScale, {
+          rot,
+          floatY,
+          isHovered: isCardHover,
+          phase: i * 2.3,
+          t: t * 0.05,
+        });
+
+        // Plaquinha estilo bar com o nome do coringa
+        const plaqueH = Math.round(16 * scale);
+        const plaqueY = cy + cardH - plaqueH - Math.round(2 * scale);
+        ctx.save();
+        ctx.fillStyle = '#171d22';
+        ctx.beginPath();
+        ctx.roundRect(cx + Math.round(4 * scale), plaqueY, cardW - Math.round(8 * scale), plaqueH, 6);
+        ctx.fill();
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = isLegendary ? '#ffd700' : '#0b0710';
+        ctx.stroke();
+
+        ctx.font = `700 ${Math.round(9 * scale)}px Oswald, sans-serif`;
+        ctx.fillStyle = isLegendary ? '#ffd700' : isCardHover ? '#ffffff' : '#ffd36a';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(jCard.icon || '🃏', cx + cardW / 2, cy + Math.round(40 * scale));
-
-        ctx.font = `700 ${Math.round(11 * scale)}px Oswald, sans-serif`;
-        ctx.fillStyle = '#1b1226';
-        ctx.textAlign = 'center';
-        ctx.fillText(jCard.name, cx + cardW / 2, cy + Math.round(78 * scale), cardW - 8);
+        ctx.fillText(jCard.name, bottleCenterX, plaqueY + plaqueH / 2, cardW - Math.round(12 * scale));
+        ctx.restore();
 
         // Botões de reposicionamento rápido (◀ e ▶) no topo do Coringa
         if (isCardHover && eng.ownedJokers.length > 1) {
@@ -841,7 +925,7 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
         const sellVal = Math.max(1, Math.floor(jCard.cost * 0.75));
         const btnBox = { x: cx, y: cy + cardH + Math.round(5 * scale), w: cardW, h: Math.round(26 * scale) };
         if (isIn(btnBox) || isCardHover) {
-          hoveredSellBtnInfo = 'Vender curinga: 75% do valor • Arraste ou use ◀ ▶ para mudar a ordem';
+          hoveredSellBtnInfo = 'Vender garrafa coringa: 75% do valor • Arraste ou use ◀ ▶ para mudar a ordem';
         }
         const isArmed = sellConfirmRef.current.index === i && t < sellConfirmRef.current.expireTime;
         const btnCol = isArmed ? '#ef4444' : '#f59e0b';
@@ -892,7 +976,16 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
             cost: consItem.cost,
             icon: consItem.icon,
           } as Card;
+          hoveredSellBtnInfo = 'Consumível: Clique na carta ou em USAR para ativar';
         }
+
+        ui.push({
+          x: hitBox.x,
+          y: hitBox.y,
+          w: hitBox.w,
+          h: hitBox.h,
+          f: () => handleUseConsumableRef.current(),
+        });
 
         ctx.fillStyle = '#0b0710';
         ctx.beginPath();
@@ -917,16 +1010,32 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
         ctx.textAlign = 'center';
         ctx.fillText(consItem.name, consSlotX + cardW / 2, startY + Math.round(74 * scale), cardW - 8);
 
-        const btnSellW = cardW;
-        const btnSellH = Math.round(24 * scale);
-        const btnSellY = startY + cardH + Math.round(8 * scale);
+        const btnW = cardW;
+        const btnH = Math.round(22 * scale);
+        const btnUseY = startY + cardH + Math.round(5 * scale);
+        const btnSellY = startY + cardH + Math.round(30 * scale);
         const isArmed = sellConfirmRef.current.index === 999 && t < sellConfirmRef.current.expireTime;
 
+        // Botão USAR
+        drawButton(
+          consSlotX,
+          btnUseY,
+          btnW,
+          btnH,
+          '⚡ USAR',
+          '#10b981',
+          true,
+          () => {
+            handleUseConsumableRef.current();
+          }
+        );
+
+        // Botão VENDER
         drawButton(
           consSlotX,
           btnSellY,
-          btnSellW,
-          btnSellH,
+          btnW,
+          btnH,
           isArmed ? 'CONFIRMAR?' : `VENDER $${consItem.sellValue}`,
           isArmed ? '#ef4444' : '#b45309',
           true,
@@ -950,7 +1059,7 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
         ctx.fillText(
           hoveredSellBtnInfo,
           startX,
-          startY + cardH + Math.round(44 * scale)
+          startY + cardH + Math.round(58 * scale)
         );
       }
 
@@ -1123,239 +1232,15 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
         ctx.fill();
         ctx.restore();
 
-        // 2. Halo traseiro (para lendárias ou no hover)
-        if (isLegendary || isHover) {
-          ctx.save();
-          ctx.translate(bx, yBase + k.l * scale - 95 * scale);
-          const haloR = isLegendary ? 75 * scale : 58 * scale;
-          const halo = ctx.createRadialGradient(0, 0, 8 * scale, 0, 0, haloR);
-          if (isLegendary) {
-            halo.addColorStop(0, 'rgba(255, 215, 0, 0.45)');
-            halo.addColorStop(0.5, 'rgba(251, 191, 36, 0.2)');
-            halo.addColorStop(1, 'rgba(245, 158, 11, 0)');
-          } else {
-            halo.addColorStop(0, theme.glow);
-            halo.addColorStop(1, 'transparent');
-          }
-          ctx.fillStyle = halo;
-          ctx.beginPath();
-          ctx.arc(0, 0, haloR, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        }
-
-        // 3. Matriz do objeto da Garrafa
-        ctx.save();
-        ctx.translate(bx, yBase + k.l * scale);
-        ctx.rotate(k.r);
-        ctx.scale(scale * k.s, scale * k.s);
-
-        if (!canAfford) {
-          ctx.globalAlpha = 0.85;
-        }
-
-        // 4. MÁSCARA DO VIDRO (Clip com BP)
-        ctx.save();
-        ctx.clip(BP);
-
-        // 4a. Vidro translúcido cilíndrico (gradiente horizontal de 4 paradas)
-        const glass = ctx.createLinearGradient(-36, 0, 36, 0);
-        if (isLegendary) {
-          glass.addColorStop(0.00, 'rgba(255, 232, 160, 0.55)');
-          glass.addColorStop(0.28, 'rgba(255, 232, 160, 0.30)');
-          glass.addColorStop(0.65, 'rgba(255, 232, 160, 0.22)');
-          glass.addColorStop(1.00, 'rgba(255, 232, 160, 0.55)');
-        } else {
-          glass.addColorStop(0.00, 'rgba(205, 236, 226, 0.50)');
-          glass.addColorStop(0.28, 'rgba(205, 236, 226, 0.28)');
-          glass.addColorStop(0.65, 'rgba(205, 236, 226, 0.20)');
-          glass.addColorStop(1.00, 'rgba(205, 236, 226, 0.50)');
-        }
-        ctx.fillStyle = glass;
-        ctx.fillRect(-45, -200, 90, 210);
-
-        // 4b. Fundo espesso de vidro (punt)
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-        ctx.beginPath();
-        ctx.ellipse(0, -6, 22, 6, 0, 0, Math.PI);
-        ctx.fill();
-
-        // 4c. Líquido dinâmico com ondulação na superfície
         const ph = (card.cost || 5) * 1.7 + i * 1.3;
-        const ly = -118 + Math.sin(t * 0.05 + ph) * 1.5;
-
-        const liq = ctx.createLinearGradient(-36, 0, 36, 0);
-        liq.addColorStop(0.0, theme.bottom);
-        liq.addColorStop(0.3, theme.top);
-        liq.addColorStop(0.7, theme.bottom);
-        liq.addColorStop(1.0, '#100518');
-        ctx.fillStyle = liq;
-        ctx.fillRect(-45, ly, 90, -ly);
-
-        const vGrad = ctx.createLinearGradient(0, ly, 0, 0);
-        vGrad.addColorStop(0, 'rgba(255, 255, 255, 0.22)');
-        vGrad.addColorStop(1, 'rgba(0, 0, 0, 0.38)');
-        ctx.fillStyle = vGrad;
-        ctx.fillRect(-45, ly, 90, -ly);
-
-        // 4d. Menisco da superfície do líquido
-        ctx.save();
-        ctx.translate(0, ly);
-        ctx.rotate(Math.sin(t * 0.04 + ph) * 0.035);
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 27, 3.4, 0, 0, Math.PI * 2);
-        ctx.fillStyle = theme.top;
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.restore();
-
-        // 4e. 6 Bolhas subindo
-        for (let b = 0; b < 6; b++) {
-          const by = -((t * 0.45 + b * 20) % (-ly - 8));
-          const bbx = Math.sin(b * 3.1 + t * 0.015) * (16 + b);
-          const alpha = Math.max(0, 1 + by / (-ly));
-          ctx.fillStyle = `rgba(255, 255, 255, ${0.45 * alpha})`;
-          ctx.beginPath();
-          ctx.arc(bbx, by, 1.2 + (b % 2) * 0.6, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        // 4f. RÓTULO CILÍNDRICO EM 3 FAIXAS (Projeção Senoidal)
-        const R0 = 33;
-        const hf = (k.s - 1.0) / 0.05;
-        const TH = (0.42 + 0.14 * hf) * Math.sin(t * 0.022 + ph);
-        const SE = [-28, -9.5, 9.5, 28];
-
-        for (let sIdx = 0; sIdx < 3; sIdx++) {
-          const s0 = SE[sIdx];
-          const s1 = SE[sIdx + 1];
-          const x0 = R0 * Math.sin(Math.min(1.5, Math.max(-1.5, s0 / R0 + TH)));
-          const x1 = R0 * Math.sin(Math.min(1.5, Math.max(-1.5, s1 / R0 + TH)));
-          if (x1 <= x0) continue;
-
-          const sc = (x1 - x0 + 0.5) / (s1 - s0);
-
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(x0 - 0.25, -95, (x1 - x0) + 0.5, 58);
-          ctx.clip();
-
-          ctx.translate(x0, -95);
-          ctx.scale(sc, 1);
-          ctx.translate(-s0, 0);
-
-          // Fundo de papel do rótulo
-          ctx.fillStyle = '#f4ecd8';
-          ctx.fillRect(s0, 0, s1 - s0, 58);
-
-          // Bloco do Coringa
-          ctx.fillStyle = '#1b1226';
-          ctx.fillRect(-23, 4, 46, 50);
-
-          if (isLegendary) {
-            ctx.strokeStyle = '#ffd700';
-            ctx.lineWidth = 1.2;
-            ctx.strokeRect(-23, 4, 46, 50);
-          }
-
-          // Ícone
-          ctx.font = '22px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(card.icon || '🃏', 0, 24);
-
-          // Nome do Coringa
-          ctx.font = '700 9.5px Oswald, sans-serif';
-          ctx.fillStyle = isLegendary ? '#ffd700' : '#fef08a';
-          ctx.fillText(card.name, 0, 44, 44);
-
-          // Escurecimento Lambert nas bordas do cilindro
-          const midAngle = ((s0 + s1) * 0.5) / R0 + TH;
-          const shadowAlpha = (1 - Math.cos(midAngle)) * 0.70;
-          ctx.fillStyle = `rgba(11, 7, 16, ${Math.max(0, shadowAlpha)})`;
-          ctx.fillRect(s0, 0, s1 - s0, 58);
-
-          ctx.restore();
-        }
-
-        // Delimitação lateral das bordas do papel
-        const lx0 = R0 * Math.sin(Math.min(1.5, Math.max(-1.5, SE[0] / R0 + TH)));
-        const lx1 = R0 * Math.sin(Math.min(1.5, Math.max(-1.5, SE[3] / R0 + TH)));
-        ctx.strokeStyle = '#0b0710';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(lx0, -95); ctx.lineTo(lx0, -37);
-        ctx.moveTo(lx1, -95); ctx.lineTo(lx1, -37);
-        ctx.stroke();
-
-        // 4g. Reflexos especulares brancos com paralaxe
-        const hs = TH * 1.6;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.40)';
-        ctx.fillRect(-24 + hs, -120, 5, 88);
-
-        // Brilho no gargalo
-        ctx.fillRect(-7, -170, 3, 45);
-
-        // Rim light sutil na borda direita
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-        ctx.fillRect(28, -115, 2.5, 85);
-
-        ctx.restore(); // Fecha o clip(BP)
-
-        // 5. Espessura interna da parede de vidro
-        ctx.save();
-        ctx.scale(0.88, 0.97);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-        ctx.lineWidth = 1.8;
-        ctx.stroke(BP);
-        ctx.restore();
-
-        // 6. Rolha de cortiça
-        ctx.fillStyle = isLegendary ? '#d97706' : '#b07d4b';
-        ctx.beginPath();
-        ctx.roundRect(-8, -198, 16, 12, 2);
-        ctx.fill();
-        ctx.strokeStyle = '#0b0710';
-        ctx.lineWidth = 2.2;
-        ctx.stroke();
-
-        // Textura da cortiça
-        ctx.strokeStyle = 'rgba(11, 7, 16, 0.35)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(-5, -193); ctx.lineTo(4, -193);
-        ctx.moveTo(-3, -190); ctx.lineTo(6, -190);
-        ctx.stroke();
-
-        // Colarinho no gargalo se lendário
-        if (isLegendary) {
-          ctx.fillStyle = '#ffd700';
-          ctx.fillRect(-10.5, -174, 21, 6);
-          ctx.strokeStyle = '#0b0710';
-          ctx.lineWidth = 1.5;
-          ctx.strokeRect(-10.5, -174, 21, 6);
-        }
-
-        // 7. Contorno cartoon externo grosso
-        ctx.strokeStyle = '#0b0710';
-        ctx.lineWidth = 3.2;
-        ctx.stroke(BP);
-
-        // 8. Selo flutuante de lendário
-        if (isLegendary) {
-          ctx.font = '700 9.5px Oswald, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillStyle = '#ffd700';
-          ctx.strokeStyle = '#0b0710';
-          ctx.lineWidth = 2.5;
-          ctx.strokeText('★ LENDÁRIO', 0, -208);
-          ctx.fillText('★ LENDÁRIO', 0, -208);
-        }
-
-        ctx.restore(); // Fecha transform da garrafa
+        drawBottle(ctx, card, bx, yBase, scale * k.s, {
+          rot: k.r,
+          floatY: k.l * scale,
+          isHovered: isHover,
+          dimmed: !canAfford,
+          phase: ph,
+          t: t * 0.05,
+        });
 
         drawCoaster(bx, yBase + Math.round(30 * scale), card.cost, canAfford);
 
@@ -1559,34 +1444,53 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
         const ballY = -48;
         const r = 30;
 
-        // Animação e modelo 3D idêntico ao ball.ts com inclinação suave voltada para o jogador
+        // Animação e modelo 3D com inclinação suave voltada para o jogador
         const tiltX = 0.22 + Math.sin(t * 0.03 + i * 1.5) * 0.08 + (isHover ? 0.05 : 0);
         const tiltY = -0.14 + Math.cos(t * 0.025 + i * 1.2) * 0.08;
         const spin = Math.sin(t * 0.02 + i * 2.0) * 0.06 + (isHover ? Math.sin(t * 0.08) * 0.04 : 0);
 
-        const M = createPreviewMatrix(tiltX, tiltY, spin);
+        // Cache offscreen para a bola da loja atualizado a 30fps
+        let bEntry = shopBallCacheRef.current.get(i);
+        const ballSize = Math.ceil((r + 10) * 2);
+        if (!bEntry) {
+          const bCanvas = document.createElement('canvas');
+          bCanvas.width = ballSize;
+          bCanvas.height = ballSize;
+          const bCtx = bCanvas.getContext('2d')!;
+          bEntry = { canvas: bCanvas, ctx: bCtx, lastOfferKey: '', lastUpdateSec: 0 };
+          shopBallCacheRef.current.set(i, bEntry);
+        }
 
-        ctx.save();
-        ctx.translate(0, ballY);
+        const nowSec = performance.now() / 1000;
+        const offerKey = `${offer.ballNumber}|${offer.isStripe}|${offer.enhancement?.id || ''}|${isHover}`;
 
-        draw3DBall(
-          ctx,
-          {
-            number: offer.ballNumber,
-            isStripe: offer.isStripe,
-            enhancement: offer.enhancement,
-            M,
-          },
-          r,
-          {
-            shadow: true,
-            shadowOffsetX: 2,
-            shadowOffsetY: 4,
-            res: 2.2,
-          }
-        );
+        if (nowSec - bEntry.lastUpdateSec >= 1 / 30 || bEntry.lastOfferKey !== offerKey) {
+          bEntry.lastUpdateSec = nowSec;
+          bEntry.lastOfferKey = offerKey;
+          const M = createPreviewMatrix(tiltX, tiltY, spin);
+          bEntry.ctx.clearRect(0, 0, ballSize, ballSize);
+          bEntry.ctx.save();
+          bEntry.ctx.translate(ballSize / 2, ballSize / 2);
+          draw3DBall(
+            bEntry.ctx,
+            {
+              number: offer.ballNumber,
+              isStripe: offer.isStripe,
+              enhancement: offer.enhancement,
+              M,
+            },
+            r,
+            {
+              shadow: true,
+              shadowOffsetX: 2,
+              shadowOffsetY: 4,
+              res: 1.5,
+            }
+          );
+          bEntry.ctx.restore();
+        }
 
-        ctx.restore();
+        ctx.drawImage(bEntry.canvas, -ballSize / 2, ballY - ballSize / 2);
 
         ctx.restore();
 
@@ -1689,36 +1593,51 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
         ctx.restore();
       }
 
-      // Se houver um coringa sendo arrastado, desenha-o sob o cursor com inclinação e sombra
+      // Se houver um coringa sendo arrastado, desenha a garrafa sob o cursor com inclinação e sombra
       if (draggedJokerRef.current !== null) {
         const dragIdx = draggedJokerRef.current.index;
         const dragCard = eng.ownedJokers[dragIdx];
         if (dragCard) {
           const mx = mouseRef.current.x;
           const my = mouseRef.current.y;
-          ctx.save();
-          ctx.translate(mx, my);
-          ctx.rotate(0.06);
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
-          ctx.shadowBlur = 18;
+          const bScale = ((cardH * 0.74) / 200) * 1.25;
 
-          ctx.fillStyle = '#fffdf5';
+          // Sombra projetada no balcão sob a garrafa arrastada
+          ctx.save();
+          ctx.translate(mx, my + Math.round(35 * scale));
           ctx.beginPath();
-          ctx.roundRect(-cardW / 2, -cardH / 2, cardW, cardH, 10);
+          ctx.ellipse(0, 0, Math.round(26 * scale), Math.round(8 * scale), 0, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
           ctx.fill();
-          ctx.lineWidth = 3;
+          ctx.restore();
+
+          // Garrafa coringa com inclinação dinâmica de arrasto
+          drawBottle(ctx, dragCard, mx, my + Math.round(20 * scale), bScale, {
+            rot: 0.08,
+            isHovered: true,
+            isDragging: true,
+            phase: dragIdx * 2.3,
+            t: t * 0.05,
+          });
+
+          // Plaquinha elegante flutuando junto à garrafa arrastada
+          const plaqueH = Math.round(18 * scale);
+          const plaqueW = Math.round(cardW * 1.05);
+          const plaqueY = my + Math.round(24 * scale);
+          ctx.save();
+          ctx.fillStyle = '#171d22';
+          ctx.beginPath();
+          ctx.roundRect(mx - plaqueW / 2, plaqueY, plaqueW, plaqueH, 6);
+          ctx.fill();
+          ctx.lineWidth = 1.5;
           ctx.strokeStyle = '#ffd700';
           ctx.stroke();
 
-          ctx.font = `${Math.round(30 * scale)}px sans-serif`;
+          ctx.font = `700 ${Math.round(10 * scale)}px Oswald, sans-serif`;
+          ctx.fillStyle = '#ffd700';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(dragCard.icon || '🃏', 0, -cardH / 2 + Math.round(40 * scale));
-
-          ctx.font = `700 ${Math.round(11 * scale)}px Oswald, sans-serif`;
-          ctx.fillStyle = '#1b1226';
-          ctx.fillText(dragCard.name, 0, -cardH / 2 + Math.round(78 * scale), cardW - 8);
-
+          ctx.fillText(dragCard.name, mx, plaqueY + plaqueH / 2, plaqueW - 8);
           ctx.restore();
         }
       }
@@ -1731,11 +1650,11 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
               ? {
                   x: mouseRef.current.x,
                   y: mouseRef.current.y,
-                  title: `Coringa Ativo: ${hoveredJokerTip.name}`,
+                  title: `Garrafa Coringa: ${hoveredJokerTip.name}`,
                   desc: `${hoveredJokerTip.description} • ${hoveredJokerTip.rarity.toUpperCase()}`,
                   cost: Math.max(1, Math.floor(hoveredJokerTip.cost * 0.75)),
                   canAfford: true,
-                  col: '#ffd700',
+                  col: hoveredJokerTip.rarity === 'Lendária' ? '#ffd700' : '#facc15',
                 }
               : null));
 
@@ -1779,11 +1698,9 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
       }
 
             uiRef.current = ui;
-
-      animFrameRef.current = requestAnimationFrame(render);
     };
 
-    render();
+    animFrameRef.current = requestAnimationFrame(render);
 
     return () => {
       window.removeEventListener('resize', updateSize);
@@ -1801,7 +1718,7 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
     <div className="w-full h-full min-h-screen overflow-hidden flex items-center justify-center bg-[#080406] relative select-none">
       <canvas
         ref={canvasRef}
-        className="w-full h-full block filter contrast-[1.12] saturate-[1.25]"
+        className="w-full h-full block"
       />
       {/* Overlay CRT com scanlines e vinheta */}
       <div
@@ -1817,6 +1734,13 @@ export const CacapaShop: React.FC<CacapaShopProps> = ({
         onClose={() => setIsBallRackOpen(false)}
         engine={engine}
         onUpdate={onUpdate}
+      />
+      <ConsumableTargetModal
+        isOpen={isConsumableTargetOpen}
+        consumable={engine.ownedConsumable}
+        engine={engine}
+        onClose={() => setIsConsumableTargetOpen(false)}
+        onSelectBall={handleSelectBallTarget}
       />
 
       {/* Modal de Substituição de Bola no Deck */}

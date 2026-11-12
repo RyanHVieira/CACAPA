@@ -28,7 +28,21 @@ export class EmpressTarot extends Card {
       const idx = Math.floor(Math.random() * candidates.length);
       const chosen = candidates[idx];
       chosen.enhancement = new GoldBallEnhancement();
+      chosen.color = '#fbbf24';
+      chosen.isDirty = true;
       e.ballDeck.set(chosen.number, chosen.enhancement);
+      const deckBall = e.deck?.find((b) => b.number === chosen.number);
+      if (deckBall) {
+        deckBall.enhancement = {
+          id: 'gold',
+          name: 'Bola Dourada',
+          icon: '🟡',
+          description: '+$4 quando encaçapada',
+          color: '#fbbf24',
+          cost: 4,
+        };
+      }
+      e.syncDeckToEngine?.();
       candidates.splice(idx, 1);
     }
     return { success: true, message: `${count} bolas foram aprimoradas para Douradas!` };
